@@ -1,5 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
+using SampleMobile.Application.Abstractions.Events;
 using SampleMobile.Application.Abstractions.Messaging;
+using SampleMobile.Application.Events.Handlers;
+using SampleMobile.Application.Services;
+using SampleMobile.Domain.Events;
 
 namespace SampleMobile.Application;
 
@@ -22,6 +26,16 @@ public static class DependencyInjection {
                 }
             }
         }
+
+        // Singleton: providers are singletons and the resolver only indexes them by id.
+        services.AddSingleton<IPushProviderResolver, PushProviderResolver>();
+        services.AddScoped<INotificationPublisher, NotificationPublisher>();
+        services.AddScoped<INotificationDispatcher, NotificationDispatcher>();
+
+        // --- Domain event handlers, invoked by the outbox processor (at least once, so idempotent).
+        // Listed explicitly as documentation of what reacts to what; DomainEventHandlerRegistrationTests
+        // fails if a handler implementation is missing its line here.
+        services.AddScoped<IDomainEventHandler<DemoAlertRaised>, DemoAlertNotificationHandler>();
 
         return services;
     }

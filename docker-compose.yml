@@ -9,7 +9,8 @@ services:
       POSTGRES_USER: sample_mobile
       POSTGRES_PASSWORD: sample_mobile_dev
     ports:
-      - "127.0.0.1:5432:5432"
+      # Host port 5433 avoids clashing with a locally installed PostgreSQL on 5432.
+      - "127.0.0.1:${SAMPLE_MOBILE_PG_PORT:-5433}:5432"
     volumes:
       - sample-mobile-pgdata:/var/lib/postgresql/data
     healthcheck:
