@@ -6,12 +6,14 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
 using SampleMobile.Application.Abstractions;
+using SampleMobile.Application.Abstractions.Events;
 using SampleMobile.Application.Abstractions.Identity;
 using SampleMobile.Application.Abstractions.Push;
 using SampleMobile.Application.Abstractions.Repositories;
 using SampleMobile.Application.Common;
 using SampleMobile.Infrastructure.Authentication;
 using SampleMobile.Infrastructure.BackgroundServices;
+using SampleMobile.Infrastructure.Events;
 using SampleMobile.Infrastructure.Identity;
 using SampleMobile.Infrastructure.Persistence;
 using SampleMobile.Infrastructure.Persistence.Interceptors;
@@ -35,11 +37,24 @@ public static class DependencyInjection {
         services.AddOptions<JwtOptions>().Bind(configuration.GetSection(JwtOptions.SectionName));
         services.AddOptions<SimulatedProviderOptions>().Bind(configuration.GetSection(SimulatedProviderOptions.SectionName));
 
+        services.AddOptions<OutboxOptions>().Bind(configuration.GetSection(OutboxOptions.SectionName));
+
         AddPersistence(services, configuration);
         AddIdentity(services);
         AddPushProviders(services);
+        AddBackgroundProcessing(services);
 
         return builder;
+    }
+
+    private static void AddBackgroundProcessing(IServiceCollection services) {
+        services.AddScoped<IDomainEventDispatcher, OutboxDomainEventDispatcher>();
+
+        // All three run in the web process for the POC. Each can be switched off by configuration,
+        // and each is safe to run in several processes at once (SKIP LOCKED claims, LISTEN per process).
+        services.AddHostedService<PostgresWorkListener>();
+        services.AddHostedService<OutboxProcessor>();
+        services.AddHostedService<DeliveryWorker>();
     }
 
     private static void AddPersistence(IServiceCollection services, IConfiguration configuration) {
