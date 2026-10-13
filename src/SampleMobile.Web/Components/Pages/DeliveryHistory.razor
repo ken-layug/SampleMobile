@@ -1,0 +1,48 @@
+@page "/deliveries"
+@attribute [Authorize(Policy = AuthorizationPolicies.AdminDashboard)]
+@rendermode InteractiveServer
+
+<PageTitle>Delivery history</PageTitle>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Delivery history</h1>
+    <AutoRefresh Interval="TimeSpan.FromSeconds(3)" OnTick="LoadAsync" />
+</div>
+
+<div class="row g-2 align-items-end mb-3">
+    <div class="col-sm-4 col-lg-3">
+        <label class="form-label small" for="status-filter">Status</label>
+        <select id="status-filter" class="form-select form-select-sm" @onchange="ChangeStatusAsync">
+            <option value="">All statuses</option>
+            @foreach (var status in Enum.GetValues<DeliveryJobStatus>()) {
+                <option @key="status" value="@status" selected="@(Status == status)">@Display.For(status).Text</option>
+            }
+        </select>
+    </div>
+    <div class="col-sm-4 col-lg-3">
+        <label class="form-label small" for="provider-filter">Provider id</label>
+        <input id="provider-filter" class="form-control form-control-sm" placeholder="e.g. fcm" value="@ProviderId" @onchange="ChangeProviderAsync" />
+    </div>
+    <div class="col-sm-4 col-lg-3">
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="simulated-only" checked="@SimulatedOnly" @onchange="ChangeSimulatedOnlyAsync" />
+            <label class="form-check-label small" for="simulated-only">Simulated only</label>
+        </div>
+    </div>
+    @if (NotificationId is not null) {
+        <div class="col-12">
+            <span class="badge text-bg-light">Notification @NotificationId</span>
+            <a class="small ms-2" href="deliveries">Clear filter</a>
+        </div>
+    }
+</div>
+
+@if (Data is null) {
+    <p class="text-muted">Loading…</p>
+} else {
+    <DeliveryHistoryTable Items="Data.Items" />
+    <div class="d-flex justify-content-between align-items-center">
+        <span class="small text-muted">@Data.TotalCount job(s)</span>
+        <Pager Page="Data.Page" TotalPages="Data.TotalPages" OnPageChanged="GoToPageAsync" />
+    </div>
+}

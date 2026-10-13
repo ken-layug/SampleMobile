@@ -1,0 +1,15 @@
+@if (TotalPages > 1) {
+    <nav aria-label="Pagination">
+        <ul class="pagination pagination-sm mb-0">
+            <li class="page-item @(Page <= 1 ? "disabled" : null)">
+                <button type="button" class="page-link" @onclick="() => GoToAsync(Page - 1)">Previous</button>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">Page @Page of @TotalPages</span>
+            </li>
+            <li class="page-item @(Page >= TotalPages ? "disabled" : null)">
+                <button type="button" class="page-link" @onclick="() => GoToAsync(Page + 1)">Next</button>
+            </li>
+        </ul>
+    </nav>
+}

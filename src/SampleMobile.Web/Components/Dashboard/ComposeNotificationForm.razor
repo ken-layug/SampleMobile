@@ -1,0 +1,58 @@
+<EditForm Model="_model" OnValidSubmit="SubmitAsync" FormName="compose-notification">
+    <DataAnnotationsValidator />
+
+    <div class="mb-3">
+        <label class="form-label" for="compose-recipient">Recipient</label>
+        <InputSelect id="compose-recipient" class="form-select" @bind-Value="_model.RecipientUserId" @bind-Value:after="RecipientChangedAsync">
+            <option value="">Choose a user…</option>
+            @foreach (var user in Users) {
+                <option @key="user.Id" value="@user.Id">@user.Label</option>
+            }
+        </InputSelect>
+        <ValidationMessage For="() => _model.RecipientUserId" />
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-4">
+            <label class="form-label" for="compose-type">Type</label>
+            <InputSelect id="compose-type" class="form-select" @bind-Value="_model.Type">
+                @foreach (var type in NotificationTypes) {
+                    <option @key="type" value="@type">@type</option>
+                }
+            </InputSelect>
+        </div>
+        <div class="col-md-8">
+            <label class="form-label" for="compose-title">Title</label>
+            <InputText id="compose-title" class="form-control" @bind-Value="_model.Title" />
+            <ValidationMessage For="() => _model.Title" />
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="compose-body">Body</label>
+        <InputTextArea id="compose-body" class="form-control" rows="3" @bind-Value="_model.Body" />
+        <ValidationMessage For="() => _model.Body" />
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-4">
+            <label class="form-label" for="compose-resource">Resource id <span class="text-muted">(optional)</span></label>
+            <InputText id="compose-resource" class="form-control" @bind-Value="_model.ResourceId" />
+        </div>
+        <div class="col-md-8">
+            <label class="form-label" for="compose-metadata">Metadata <span class="text-muted">(optional, key=value per line)</span></label>
+            <InputTextArea id="compose-metadata" class="form-control font-monospace" rows="2" @bind-Value="_model.MetadataText" />
+        </div>
+    </div>
+
+    @if (_model.RecipientUserId is not null) {
+        <fieldset class="mb-3">
+            <legend class="form-label fs-6">Delivery targets</legend>
+            <DeliveryTargetPicker Targets="Targets" SelectedIds="_model.SelectedTargetIds" OnToggle="ToggleTarget" />
+        </fieldset>
+    }
+
+    <button type="submit" class="btn btn-primary" disabled="@IsSubmitting">
+        @(IsSubmitting ? "Saving…" : "Save notification and queue delivery")
+    </button>
+</EditForm>

@@ -1,0 +1,37 @@
+<div class="card h-100">
+    <div class="card-header fw-semibold">Registered push providers</div>
+    <div class="table-responsive">
+        <table class="table table-sm mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Provider id</th>
+                    <th>Adapter</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var provider in Providers) {
+                    <tr @key="provider.ProviderId">
+                        <td><code>@provider.ProviderId</code></td>
+                        <td>
+                            @provider.DisplayName
+                            @if (provider.IsSimulated) {
+                                <StatusBadge Badge="Display.Simulated" />
+                            }
+                        </td>
+                        <td>
+                            @if (provider.IsConfigured) {
+                                <span class="badge text-bg-success">Configured</span>
+                            } else {
+                                <span class="badge text-bg-warning">Not configured</span>
+                            }
+                            @if (!string.IsNullOrEmpty(provider.StatusDetail)) {
+                                <div class="small text-muted">@provider.StatusDetail</div>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

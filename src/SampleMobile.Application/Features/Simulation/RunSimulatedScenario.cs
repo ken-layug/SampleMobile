@@ -29,8 +29,8 @@ public sealed record RunSimulatedScenarioCommand(Guid RecipientUserId, Simulated
 public sealed record SimulatedScenarioRun(Guid NotificationId, Guid RegistrationId, Guid? DeliveryJobId);
 
 /// <summary>
-/// Runs one end-to-end delivery scenario against the simulated provider. Each run gets its own fresh
-/// virtual device, so an "invalid registration" run never disables the seeded demo device.
+/// Runs one end-to-end delivery scenario against the simulated provider, using a virtual device
+/// dedicated to that scenario, so an "invalid registration" run never disables the seeded demo device.
 /// Everything after this handler is the real pipeline: delivery worker, retry policy, attempt history.
 /// </summary>
 public sealed class RunSimulatedScenarioCommandHandler(
@@ -47,20 +47,25 @@ public sealed class RunSimulatedScenarioCommandHandler(
             return OperationResult<SimulatedScenarioRun>.Invalid("recipientUserId", "The recipient does not exist.");
         }
 
-        var runId = Guid.CreateVersion7().ToString("N");
-        var address = $"sim-{command.Scenario.ToString().ToLowerInvariant()}-{runId}";
-        var registration = DeviceRegistration.Register(
-            command.RecipientUserId,
-            $"sim-scenario-{runId[^12..]}",
-            DevicePlatform.Virtual,
-            simulator.ProviderId,
-            address,
-            timeProvider.GetUtcNow());
+        // One virtual installation per scenario, re-registered with a fresh address on every run. The new
+        // address gets its own script, and the device count stays bounded instead of growing with each run.
+        var scenarioName = command.Scenario.ToString().ToLowerInvariant();
+        var installationId = $"sim-scenario-{scenarioName}";
+        var address = $"sim-{scenarioName}-{Guid.CreateVersion7():N}";
+        var now = timeProvider.GetUtcNow();
 
         // Script before anything is persisted, so the worker can never dispatch ahead of the script.
         simulator.ScriptOutcomes(address, ScriptFor(command.Scenario));
 
-        registrations.Add(registration);
+        var registration = await registrations.FindByInstallationAsync(installationId, simulator.ProviderId, cancellationToken);
+        if (registration is null) {
+            registration = DeviceRegistration.Register(
+                command.RecipientUserId, installationId, DevicePlatform.Virtual, simulator.ProviderId, address, now);
+            registrations.Add(registration);
+        } else {
+            registration.Refresh(command.RecipientUserId, DevicePlatform.Virtual, address, now);
+        }
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         var published = await publisher.PublishAsync(

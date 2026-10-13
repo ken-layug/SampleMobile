@@ -23,6 +23,7 @@ builder.AddInfrastructure();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddSingleton<IDashboardSender, DashboardSender>();
 
 // --- Mobile REST API.
 builder.Services.AddControllers(options =>

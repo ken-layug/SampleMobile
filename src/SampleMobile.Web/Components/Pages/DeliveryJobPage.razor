@@ -1,0 +1,69 @@
+@page "/deliveries/{JobId:guid}"
+@attribute [Authorize(Policy = AuthorizationPolicies.AdminDashboard)]
+@rendermode InteractiveServer
+
+<PageTitle>Delivery job</PageTitle>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Delivery job <code class="fs-5">@Display.ShortId(JobId)</code></h1>
+    <AutoRefresh Interval="TimeSpan.FromSeconds(2)" OnTick="LoadAsync" />
+</div>
+
+<a class="small" href="deliveries">← Delivery history</a>
+
+@if (NotFound) {
+    <div class="alert alert-warning mt-3">This delivery job does not exist.</div>
+} else if (Detail is null) {
+    <p class="text-muted">Loading…</p>
+} else {
+    var job = Detail.Job;
+    <div class="card my-3">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Status</dt>
+                <dd class="col-sm-9">
+                    <StatusBadge Badge="Display.For(job.Status)" />
+                    @if (job.Status == DeliveryJobStatus.RetryScheduled) {
+                        <span class="small text-muted ms-2">next attempt @Display.Time(job.NextAttemptAt)</span>
+                    }
+                </dd>
+                <dt class="col-sm-3">Notification</dt>
+                <dd class="col-sm-9">@job.NotificationTitle <code class="small">@job.NotificationType</code></dd>
+                <dt class="col-sm-3">Recipient</dt>
+                <dd class="col-sm-9">@job.RecipientUserName</dd>
+                <dt class="col-sm-3">Device registration</dt>
+                <dd class="col-sm-9">
+                    @job.InstallationId
+                    <StatusBadge Badge="Display.ForRegistration(Detail.RegistrationEnabled, Detail.RegistrationDisabledReason)" />
+                </dd>
+                <dt class="col-sm-3">Provider</dt>
+                <dd class="col-sm-9">
+                    <code>@job.ProviderId</code>
+                    @if (job.IsSimulated) {
+                        <StatusBadge Badge="Display.Simulated" />
+                    }
+                </dd>
+                <dt class="col-sm-3">Provider message id</dt>
+                <dd class="col-sm-9"><code class="small">@(Detail.ProviderMessageId ?? "—")</code></dd>
+            </dl>
+        </div>
+    </div>
+
+    @if (job.Status is DeliveryJobStatus.Failed or DeliveryJobStatus.Cancelled) {
+        <div class="mb-3">
+            <button type="button" class="btn btn-sm btn-outline-primary" disabled="@IsRequeuing" @onclick="RequeueAsync">
+                Requeue with a fresh retry budget
+            </button>
+            <span class="small text-muted ms-2">Useful after fixing provider credentials.</span>
+        </div>
+    }
+    <ResultAlert Result="RequeueResult" />
+
+    <h2 class="h5 mt-4">Attempts</h2>
+    <AttemptTable Attempts="Detail.Attempts" />
+    <p class="small text-muted">
+        An <em>abandoned</em> attempt means a worker lost its lease or shut down before recording an outcome. The provider
+        may still have accepted that message, so the device can see a duplicate; push data carries the notification id
+        so clients can de-duplicate.
+    </p>
+}

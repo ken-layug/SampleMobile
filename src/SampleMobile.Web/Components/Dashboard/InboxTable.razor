@@ -1,0 +1,44 @@
+<div class="table-responsive">
+    <table class="table table-sm align-middle">
+        <thead>
+            <tr>
+                <th>Created</th>
+                <th>Type</th>
+                <th>Title / body</th>
+                <th>Resource</th>
+                <th>Read state</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Items.Count == 0) {
+                <tr><td colspan="5" class="text-muted">No notifications in this inbox.</td></tr>
+            }
+            @foreach (var item in Items) {
+                <tr @key="item.Id" class="@(item.ReadAt is null ? "fw-semibold" : null)">
+                    <td class="small text-nowrap">@Display.Time(item.CreatedAt)</td>
+                    <td><code class="small">@item.Type</code></td>
+                    <td>
+                        <div>@item.Title</div>
+                        <div class="small text-muted fw-normal">@item.Body</div>
+                        @if (item.Metadata.Count > 0) {
+                            <div class="small fw-normal">
+                                @foreach (var (key, value) in item.Metadata) {
+                                    <span class="badge text-bg-light me-1" @key="key">@key=@value</span>
+                                }
+                            </div>
+                        }
+                    </td>
+                    <td><code class="small">@(item.ResourceId ?? "—")</code></td>
+                    <td class="small fw-normal">
+                        @if (item.ReadAt is { } readAt) {
+                            <span class="badge text-bg-secondary">Read</span>
+                            <div class="text-muted">@Display.Time(readAt)</div>
+                        } else {
+                            <span class="badge text-bg-primary">Unread</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

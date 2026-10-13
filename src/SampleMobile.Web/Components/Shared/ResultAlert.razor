@@ -1,0 +1,15 @@
+@if (Result is not null) {
+    <div class="alert @(Result.Succeeded ? "alert-success" : "alert-danger") mt-3 mb-0" role="status">
+        <div>@Result.Message</div>
+        @if (Result.Details.Count > 0) {
+            <ul class="mb-0 small">
+                @foreach (var detail in Result.Details) {
+                    <li>@detail</li>
+                }
+            </ul>
+        }
+        @if (Result.LinkHref is not null) {
+            <a class="alert-link small" href="@Result.LinkHref">@Result.LinkText</a>
+        }
+    </div>
+}

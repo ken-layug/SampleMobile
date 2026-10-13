@@ -1,0 +1,9 @@
+<div class="card h-100 border-@Tone">
+    <div class="card-body">
+        <div class="text-muted small text-uppercase">@Title</div>
+        <div class="display-6 fw-semibold text-@Tone">@Value</div>
+        @if (!string.IsNullOrEmpty(Hint)) {
+            <div class="small text-muted mt-1">@Hint</div>
+        }
+    </div>
+</div>
