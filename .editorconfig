@@ -1,0 +1,81 @@
+# Top-most EditorConfig file
+root = true
+
+[*.cs]
+
+#### Core Formatting Rules ####
+indent_style = space
+indent_size = 4
+tab_width = 4
+end_of_line = crlf
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+#### C# Formatting Rules (K&R / Egyptian Braces) ####
+
+# Keep braces on the same line as the declaration
+csharp_new_line_before_open_brace = none
+csharp_new_line_before_else = false
+csharp_new_line_before_catch = false
+csharp_new_line_before_finally = false
+csharp_new_line_before_members_in_object_initializers = false
+csharp_new_line_before_members_in_anonymous_types = false
+csharp_new_line_between_query_expression_clauses = true
+
+# Spacing rules for better readability
+csharp_space_after_comma = true
+csharp_space_after_keywords_in_control_flow_statements = true
+csharp_space_around_binary_operators = before_and_after
+csharp_space_before_colon_in_inheritance_clause = true
+csharp_space_after_colon_in_inheritance_clause = true
+
+#### Naming Conventions ####
+
+# 1. Private/Internal Fields (_camelCase)
+dotnet_naming_rule.private_fields_with_underscore.symbols = private_fields
+dotnet_naming_rule.private_fields_with_underscore.style = underscored_camel_case
+dotnet_naming_rule.private_fields_with_underscore.severity = suggestion
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private, protected, internal, private_protected, protected_internal
+dotnet_naming_style.underscored_camel_case.capitalization = camel_case
+dotnet_naming_style.underscored_camel_case.required_prefix = _
+
+# 2. Interfaces (IPascalCase)
+dotnet_naming_rule.interfaces_must_start_with_i.symbols = interface_symbols
+dotnet_naming_rule.interfaces_must_start_with_i.style = interface_style
+dotnet_naming_rule.interfaces_must_start_with_i.severity = suggestion
+
+dotnet_naming_symbols.interface_symbols.applicable_kinds = interface
+dotnet_naming_style.interface_style.capitalization = pascal_case
+dotnet_naming_style.interface_style.required_prefix = I
+
+# 3. Classes (PascalCase)
+dotnet_naming_rule.classes_must_be_pascal_case.symbols = class_symbols
+dotnet_naming_rule.classes_must_be_pascal_case.style = pascal_case_style
+dotnet_naming_rule.classes_must_be_pascal_case.severity = suggestion
+
+dotnet_naming_symbols.class_symbols.applicable_kinds = class
+
+# 4. Properties (PascalCase)
+dotnet_naming_rule.properties_must_be_pascal_case.symbols = property_symbols
+dotnet_naming_rule.properties_must_be_pascal_case.style = pascal_case_style
+dotnet_naming_rule.properties_must_be_pascal_case.severity = suggestion
+
+dotnet_naming_symbols.property_symbols.applicable_kinds = property
+
+# 5. Method Parameters (camelCase)
+dotnet_naming_rule.parameters_must_be_camel_case.symbols = parameter_symbols
+dotnet_naming_rule.parameters_must_be_camel_case.style = camel_case_style
+dotnet_naming_rule.parameters_must_be_camel_case.severity = suggestion
+
+dotnet_naming_symbols.parameter_symbols.applicable_kinds = parameter
+
+#### Reusable Styles ####
+dotnet_naming_style.pascal_case_style.capitalization = pascal_case
+dotnet_naming_style.camel_case_style.capitalization = camel_case
+
+#### C# Coding Conventions ####
+dotnet_style_qualification_for_field = false:suggestion
+dotnet_style_qualification_for_property = false:suggestion
+dotnet_style_qualification_for_method = false:suggestion
