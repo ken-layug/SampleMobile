@@ -31,7 +31,7 @@ public static class DependencyInjection {
         var services = builder.Services;
         var configuration = builder.Configuration;
 
-        services.TryAddSingleton(TimeProvider.System);
+        services.TryAddSingleton<TimeProvider>(new MicrosecondTimeProvider());
         services.AddOptions<DeliveryOptions>().Bind(configuration.GetSection(DeliveryOptions.SectionName));
         services.AddOptions<DatabaseOptions>().Bind(configuration.GetSection(DatabaseOptions.SectionName));
         services.AddOptions<DemoSeedOptions>().Bind(configuration.GetSection(DemoSeedOptions.SectionName));
@@ -41,7 +41,7 @@ public static class DependencyInjection {
         services.AddOptions<OutboxOptions>().Bind(configuration.GetSection(OutboxOptions.SectionName));
         services.AddOptions<FirebaseOptions>().Bind(configuration.GetSection(FirebaseOptions.SectionName));
 
-        AddPersistence(services, configuration);
+        AddPersistence(services);
         AddIdentity(services);
         AddPushProviders(services);
         AddBackgroundProcessing(services);
@@ -59,15 +59,20 @@ public static class DependencyInjection {
         services.AddHostedService<DeliveryWorker>();
     }
 
-    private static void AddPersistence(IServiceCollection services, IConfiguration configuration) {
-        var connectionString = configuration.GetConnectionString(ConnectionStringName);
-        if (string.IsNullOrWhiteSpace(connectionString)) {
-            throw new InvalidOperationException(
-                $"ConnectionStrings:{ConnectionStringName} is not configured. See README.md for the local PostgreSQL setup.");
-        }
-
+    private static void AddPersistence(IServiceCollection services) {
         // One data source for EF and for the LISTEN connection, so both share pooling and configuration.
-        services.AddSingleton(_ => new NpgsqlDataSourceBuilder(connectionString).Build());
+        // Resolved from the final configuration (not read at registration time), so hosts and test
+        // factories can still override the connection string. Startup touches the database right away,
+        // so a missing value still fails fast.
+        services.AddSingleton(provider => {
+            var connectionString = provider.GetRequiredService<IConfiguration>().GetConnectionString(ConnectionStringName);
+            if (string.IsNullOrWhiteSpace(connectionString)) {
+                throw new InvalidOperationException(
+                    $"ConnectionStrings:{ConnectionStringName} is not configured. See README.md for the local PostgreSQL setup.");
+            }
+
+            return new NpgsqlDataSourceBuilder(connectionString).Build();
+        });
         services.AddSingleton<WorkSignal>();
 
         // Scoped, like the DbContext options: it carries state between SavingChanges and SavedChanges.
