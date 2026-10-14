@@ -43,7 +43,7 @@ sequenceDiagram
     Boot->>Sync: Process pending old-session cleanup first
     Boot->>Transport: Select, initialize, activate
     Transport->>SDK: Enable auto-init
-    Boot->>Boot: Get stable installationId; request permission
+    Boot->>Boot: Get stable installationId, request permission
     Note over Boot,SDK: Registration does not wait for notification permission
     Boot->>Transport: GetRegistrationAddressAsync
     Transport->>SDK: GetToken
@@ -52,7 +52,7 @@ sequenceDiagram
     Boot->>Sync: Persist address, then SyncAsync
     Sync->>API: POST /api/mobile/device-registrations with JWT
     API->>DB: Upsert by installationId and provider
-    Note over API,DB: Owner comes from authenticated user; address is not returned
+    Note over API,DB: Owner comes from authenticated user, address is not returned
     DB-->>API: Saved
     API-->>Sync: 201 created or 200 refreshed
     Boot->>API: Refresh inbox through inbox service
@@ -96,11 +96,11 @@ sequenceDiagram
         Outbox->>DB: Mark event processed and commit transaction
     end
     DB-->>Worker: Work notification through listener, or timed wake-up
-    Worker->>DB: Claim due jobs; create attempt and lease; commit
+    Worker->>DB: Claim due jobs, create attempt and lease, commit
     Worker->>Dispatcher: DispatchAsync(claim) in its own DI scope
     Dispatcher->>DB: Load job, enabled registration, and content
-    Dispatcher->>Provider: Resolve exact provider; SendAsync(request)
-    Provider->>Provider: Get Admin SDK client; build FCM message
+    Dispatcher->>Provider: Resolve exact provider, SendAsync(request)
+    Provider->>Provider: Get Admin SDK client, build FCM message
     Note over Provider,FCM: Provider call runs outside the claim transaction
     Provider->>FCM: Admin SDK SendAsync (HTTP v1)
     FCM-->>Provider: Message ID or error
@@ -150,7 +150,7 @@ sequenceDiagram
         FCM->>Tray: Automatically display notification payload
         Note over Service,Tray: No OnMessageReceived callback for this mixed payload
     end
-    Tray->>Nav: User taps; notificationId arrives in intent extras
+    Tray->>Nav: User taps, notificationId arrives in intent extras
     Note over Nav,Detail: Wait for restored/login session and ready shell if needed
     Nav->>Detail: Open notification detail
     Detail->>Inbox: GetAsync(id)
@@ -181,11 +181,11 @@ sequenceDiagram
     participant Transport as FirebaseAndroidPushTransport
     Session->>Sync: BeginLogoutAsync(current session)
     Sync->>Store: Persist cleanup with old JWT and expiry
-    Session->>Session: Sign out; clear inbox, navigation, and tray
+    Session->>Session: Sign out, clear inbox, navigation, and tray
     Session->>Sync: ProcessPendingCleanupAsync
     opt Saved JWT has not expired
         Sync->>API: DELETE installation registration using saved JWT
-        API-->>Sync: Result; retain DELETE on transient failure
+        API-->>Sync: Result, retain DELETE on transient failure
     end
     Sync->>Transport: ResetRegistrationAsync
     Transport->>Transport: Disable auto-init and delete FCM token
