@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:SampleMobile.Mobile.Core.ViewModels;assembly=SampleMobile.Mobile.Core"
+             x:Class="SampleMobile.Mobile.Views.NotificationDetailPage"
+             x:DataType="vm:NotificationDetailViewModel"
+             Title="Notification">
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="12">
+            <ActivityIndicator IsRunning="{Binding IsLoading}" IsVisible="{Binding IsLoading}" />
+
+            <Border Style="{StaticResource ErrorBanner}" IsVisible="{Binding HasError}">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="{Binding ErrorMessage}" Style="{StaticResource BannerText}" />
+                    <Button Text="Try again" Command="{Binding LoadCommand}" HorizontalOptions="Start" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource Banner}" IsVisible="{Binding IsUnavailable}">
+                <Label Style="{StaticResource BannerText}"
+                       Text="This notification is not available. It may have been removed or belong to another account." />
+            </Border>
+
+            <VerticalStackLayout Spacing="8" IsVisible="{Binding HasContent}">
+                <Label Text="{Binding Type}" Style="{StaticResource Caption}" />
+                <Label Text="{Binding Title}" Style="{StaticResource PageTitle}" />
+                <Label Text="{Binding CreatedAt}" Style="{StaticResource Caption}" />
+                <Label Text="{Binding ReadState}" Style="{StaticResource Caption}" />
+                <BoxView HeightRequest="1" Color="{StaticResource Gray200}" Margin="0,4" />
+                <Label Text="{Binding Body}" Style="{StaticResource Value}" />
+                <Label Text="{Binding Details}" Style="{StaticResource Caption}" />
+                <Button Text="Mark as read" Command="{Binding MarkAsReadCommand}"
+                        IsVisible="{Binding IsRead, Converter={StaticResource InvertedBool}}" />
+            </VerticalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

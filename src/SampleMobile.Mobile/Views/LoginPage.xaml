@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:SampleMobile.Mobile.Core.ViewModels;assembly=SampleMobile.Mobile.Core"
+             x:Class="SampleMobile.Mobile.Views.LoginPage"
+             x:DataType="vm:LoginViewModel"
+             Title="Sign in">
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="12">
+            <Label Text="SampleMobile" Style="{StaticResource PageTitle}" />
+            <Label Text="Sign in with a backend account to receive notifications." Style="{StaticResource Caption}" />
+
+            <Border Style="{StaticResource WarningBanner}" IsVisible="{Binding HasStatus}">
+                <Label Text="{Binding StatusMessage}" Style="{StaticResource BannerText}" />
+            </Border>
+
+            <Label Text="Backend URL (development)" Style="{StaticResource Caption}" />
+            <Entry Text="{Binding BackendUrl}" Keyboard="Url" Placeholder="http://10.0.2.2:5010" IsSpellCheckEnabled="False" />
+
+            <Label Text="User name" Style="{StaticResource Caption}" />
+            <Entry Text="{Binding UserName}" Placeholder="alice" IsSpellCheckEnabled="False" IsTextPredictionEnabled="False" />
+
+            <Label Text="Password" Style="{StaticResource Caption}" />
+            <Entry Text="{Binding Password}" IsPassword="True" ReturnCommand="{Binding LoginCommand}" />
+
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="4" IsVisible="{Binding HasRealPushTransport}">
+                <CheckBox IsChecked="{Binding UseInboxOnly}" VerticalOptions="Center" />
+                <Label Grid.Column="1" Text="Inbox-only mode (no real push; sync through the API)" VerticalOptions="Center" />
+            </Grid>
+
+            <Border Style="{StaticResource ErrorBanner}" IsVisible="{Binding HasError}">
+                <Label Text="{Binding ErrorMessage}" Style="{StaticResource BannerText}" />
+            </Border>
+
+            <Button Text="Sign in" Command="{Binding LoginCommand}" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+
+            <Label Style="{StaticResource Caption}"
+                   Text="Demo accounts are configured in the backend's appsettings.Development.json (DemoSeed:MobileUsers)." />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

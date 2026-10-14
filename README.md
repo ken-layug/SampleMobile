@@ -5,7 +5,7 @@ An ASP.NET Core 10 proof of concept for managing push notifications **independen
 The one web process hosts three things:
 
 - a **Blazor admin dashboard**: compose notifications, raise a sample domain event, inspect devices, delivery history and inboxes, and run simulator scenarios;
-- a **mobile REST API** for the companion .NET MAUI Android app (inbox, read state, device registration, JWT auth);
+- a **mobile REST API** for the companion [.NET MAUI Android app](src/SampleMobile.Mobile/README.md) (inbox, read state, device registration, JWT auth);
 - **background processing**: a transactional-outbox processor and a delivery worker that claims jobs with `FOR UPDATE SKIP LOCKED`, retries with bounded backoff, and wakes on PostgreSQL `LISTEN/NOTIFY` instead of polling.
 
 See [docs/architecture.md](docs/architecture.md) for the design, provider boundaries and delivery semantics, and [docs/mobile-api-contract.md](docs/mobile-api-contract.md) for the client contract.
@@ -15,7 +15,10 @@ See [docs/architecture.md](docs/architecture.md) for the design, provider bounda
 - .NET SDK 10.0.4xx (`dotnet --list-sdks`)
 - Docker Desktop, for the local PostgreSQL and the integration tests
 - Optional: the [Aspire CLI](https://aspire.dev) 13.6, to run everything with one command and get the dashboard
-- Optional: a Firebase project and an Android device, for real FCM pushes
+- The .NET **Android workload** (`dotnet workload install maui-android`, or Visual Studio's .NET MAUI workload) with Android SDK 36 and JDK 17/21. `SampleMobile.slnx` includes the MAUI app, so `dotnet build` and `dotnet test` at the root need it.
+- Optional: a Firebase project and an Android device or Google Play emulator, for real FCM pushes
+
+The MAUI app is not part of the Aspire AppHost; it is launched separately against the running backend. See [src/SampleMobile.Mobile/README.md](src/SampleMobile.Mobile/README.md).
 
 ## Quick start (no Firebase needed)
 
@@ -151,7 +154,12 @@ The service account needs permission to send FCM messages (the default *Firebase
 dotnet test
 ```
 
-This runs 83 tests: domain, application (with NSubstitute), adapters, architecture rules, and **PostgreSQL integration tests**. The integration tests start a throwaway `postgres:17-alpine` container through Testcontainers, so Docker must be running. To run without Docker:
+This runs 176 tests in two projects:
+
+- `tests/SampleMobile.Tests` (83): domain, application (with NSubstitute), adapters, architecture rules, and **PostgreSQL integration tests**.
+- `tests/SampleMobile.Mobile.Tests` (93): the MAUI app's provider-neutral core. These cover contract JSON, auth/401 handling, registration sync and logout cleanup, push handling, the inbox and the mobile dependency rule. They need no device, Firebase or Docker.
+
+The backend integration tests start a throwaway `postgres:17-alpine` container through Testcontainers, so Docker must be running. To run without Docker:
 
 ```bash
 dotnet test -- --filter-not-trait "Category=Integration"
@@ -185,10 +193,10 @@ Also confirm:
 - requests without a token get `401`;
 - another user's notification returns `404`.
 
-**C. Physical Android device with FCM** (needs the MAUI app and Firebase credentials):
+**C. Android device with FCM** (needs the [MAUI app](src/SampleMobile.Mobile/README.md) and Firebase credentials; its README has the full device checklist):
 
-1. Configure Firebase (above). Start the backend with `--urls http://0.0.0.0:5010` and allow port 5010 through the firewall.
-2. In the MAUI app, set the base URL to `http://<LAN-IP>:5010`, sign in as `alice`, and register with `provider: "fcm"` and the FCM registration token.
+1. Configure Firebase (above) and put the app's `google-services.json` in `src/SampleMobile.Mobile/Platforms/Android/`. On an emulator, the default backend URL `http://10.0.2.2:5010` works as is. For a USB device, run `adb reverse tcp:5010 tcp:5010` and use `http://localhost:5010`.
+2. Run the app (`dotnet build src/SampleMobile.Mobile -t:Run -f net10.0-android`) and sign in as `alice`. The app registers itself with `provider: "fcm"` and the FCM registration token.
 3. Registered devices shows the Android `fcm` registration (token masked).
 4. Compose to Alice, targeting the Android registration. Delivery history shows *Provider accepted* with an FCM message id, and the device shows the notification. Tapping it should open the item fetched from the inbox API.
 5. Uninstall the app (or clear its data) and send again. FCM eventually reports `UNREGISTERED` and the registration is disabled (*invalidated by provider*). FCM may take a while to report it.
@@ -206,7 +214,10 @@ src/
   SampleMobile.Web/             Program.cs, Controllers/Mobile/, Components/ (Blazor dashboard), OpenApi/
   SampleMobile.ServiceDefaults/ OpenTelemetry, health endpoints, service discovery, HTTP resilience
   SampleMobile.AppHost/         Aspire AppHost: PostgreSQL, pgAdmin, web app
+  SampleMobile.Mobile.Core/     MAUI client core (net10.0, no MAUI/Firebase): Api/, Session/, Notifications/, Push/, ViewModels/
+  SampleMobile.Mobile/          .NET MAUI Android app: Views/, Services/, Platforms/Android/ (Notifications/, Push/Firebase/)
 tests/SampleMobile.Tests/       Domain/, Application/, Infrastructure/, Architecture/, Integration/
+tests/SampleMobile.Mobile.Tests/ Api/, Session/, Push/, Notifications/, Architecture/ (mobile core)
 docs/                           architecture.md, mobile-api-contract.md, openapi/mobile-v1.json
 ```
 

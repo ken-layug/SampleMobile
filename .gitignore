@@ -485,5 +485,11 @@ $RECYCLE.BIN/
 *firebase-adminsdk*.json
 *service-account*.json
 secrets/
+# Firebase client configuration for the MAUI app (per developer project) and Android signing/packages.
+google-services.json
+*.keystore
+*.jks
+*.apk
+*.aab
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
