@@ -31,7 +31,9 @@ public static class DependencyInjection {
         var services = builder.Services;
         var configuration = builder.Configuration;
 
-        services.TryAddSingleton<TimeProvider>(new MicrosecondTimeProvider());
+        // Replace, not TryAdd: framework packages (HTTP resilience via ServiceDefaults) register
+        // TimeProvider.System first, and the app clock must still round to microseconds.
+        services.Replace(ServiceDescriptor.Singleton<TimeProvider>(new MicrosecondTimeProvider()));
         services.AddOptions<DeliveryOptions>().Bind(configuration.GetSection(DeliveryOptions.SectionName));
         services.AddOptions<DatabaseOptions>().Bind(configuration.GetSection(DatabaseOptions.SectionName));
         services.AddOptions<DemoSeedOptions>().Bind(configuration.GetSection(DemoSeedOptions.SectionName));
@@ -74,6 +76,7 @@ public static class DependencyInjection {
             return new NpgsqlDataSourceBuilder(connectionString).Build();
         });
         services.AddSingleton<WorkSignal>();
+        services.AddHealthChecks().AddCheck<PostgresHealthCheck>("postgres");
 
         // Scoped, like the DbContext options: it carries state between SavingChanges and SavedChanges.
         services.AddScoped<WorkAvailableInterceptor>();

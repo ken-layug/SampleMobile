@@ -14,15 +14,29 @@ See [docs/architecture.md](docs/architecture.md) for the design, provider bounda
 
 - .NET SDK 10.0.4xx (`dotnet --list-sdks`)
 - Docker Desktop, for the local PostgreSQL and the integration tests
+- Optional: the [Aspire CLI](https://aspire.dev) 13.6, to run everything with one command and get the dashboard
 - Optional: a Firebase project and an Android device, for real FCM pushes
 
 ## Quick start (no Firebase needed)
+
+With Aspire (recommended):
+
+```bash
+aspire start          # PostgreSQL + pgAdmin containers, then the web app once the database is up
+aspire stop
+```
+
+The [AppHost](src/SampleMobile.AppHost/AppHost.cs) starts a persistent PostgreSQL 17 container with a data volume and a generated password (kept in the AppHost's user-secrets), plus pgAdmin, and injects `ConnectionStrings:SampleMobile` into the web app. The Aspire dashboard (URL printed by `aspire start`) shows each resource's health, console logs, structured logs, traces and metrics. pgAdmin opens from the `pgadmin` resource there.
+
+Without Aspire:
 
 ```bash
 docker compose up -d
 dotnet tool restore
 dotnet run --project src/SampleMobile.Web --launch-profile http
 ```
+
+Either way:
 
 1. Open <http://localhost:5010>. In Development the app applies migrations and seeds demo data on startup.
 2. Sign in with the demo **administrator**. The user names and passwords for all demo accounts are under `DemoSeed` in [`src/SampleMobile.Web/appsettings.Development.json`](src/SampleMobile.Web/appsettings.Development.json). They are created only when the environment is `Development`.
@@ -36,7 +50,9 @@ Seeded data:
 | `alice` | Mobile user | Has a virtual device on the `simulated` provider. |
 | `bob` | Mobile user | No devices, so notifications to Bob are inbox-only until a device registers. |
 
-PostgreSQL listens on **localhost:5433**, not 5432, so it doesn't clash with a locally installed PostgreSQL. To use another port, set `SAMPLE_MOBILE_PG_PORT` and override the connection string.
+With compose, PostgreSQL listens on **localhost:5433**, not 5432, so it doesn't clash with a locally installed PostgreSQL. To use another port, set `SAMPLE_MOBILE_PG_PORT` and override the connection string. The Aspire database is a separate container on a dynamic port with its own data. `dotnet ef` commands use the connection string in `appsettings.Development.json`, so they target the compose database.
+
+In Development, `/health` (readiness, including a PostgreSQL check) and `/alive` (liveness) are mapped by the shared `SampleMobile.ServiceDefaults` project, which also exports OpenTelemetry when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (Aspire sets it).
 
 ## Configuration
 
@@ -188,6 +204,8 @@ src/
   SampleMobile.Infrastructure/  Persistence/ (EF Core, migrations, outbox, repositories, seeding), Identity/, Authentication/,
                                 Push/Firebase/, Push/Simulated/, BackgroundServices/ (worker, outbox processor, LISTEN)
   SampleMobile.Web/             Program.cs, Controllers/Mobile/, Components/ (Blazor dashboard), OpenApi/
+  SampleMobile.ServiceDefaults/ OpenTelemetry, health endpoints, service discovery, HTTP resilience
+  SampleMobile.AppHost/         Aspire AppHost: PostgreSQL, pgAdmin, web app
 tests/SampleMobile.Tests/       Domain/, Application/, Infrastructure/, Architecture/, Integration/
 docs/                           architecture.md, mobile-api-contract.md, openapi/mobile-v1.json
 ```
@@ -195,6 +213,7 @@ docs/                           architecture.md, mobile-api-contract.md, openapi
 ## Troubleshooting
 
 - **`ports are not available … 5432`**: another PostgreSQL is running. Compose already maps to 5433. If 5433 is also taken, set `SAMPLE_MOBILE_PG_PORT` and update the connection string.
+- **`aspire start` fails with a file lock (MSB3491/CS2012)**: an earlier run still holds the build output. Run `aspire stop` and start again.
 - **Mobile `401` after restarting the backend**: Development uses an ephemeral JWT key unless `Jwt:SigningKey` is set. Set it with user-secrets for stable tokens.
 - **`firebase_not_configured` / `firebase_credentials_invalid` in Delivery history**: expected without (valid) Firebase credentials. Fix the configuration, restart, and requeue the job.
 - **`dotnet test` fails to start containers**: start Docker Desktop, or exclude the integration tests as shown above.

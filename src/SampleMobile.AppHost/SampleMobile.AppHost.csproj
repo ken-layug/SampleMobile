@@ -9,4 +9,12 @@
     <UserSecretsId>d3e1ad4d-4e21-419c-a415-301a70422c8f</UserSecretsId>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SampleMobile.Web\SampleMobile.Web.csproj" />
+  </ItemGroup>
+
 </Project>
