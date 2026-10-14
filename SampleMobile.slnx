@@ -10,9 +10,7 @@
     <Project Path="src/SampleMobile.Web/SampleMobile.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/SampleMobile.Mobile.Tests/SampleMobile.Mobile.Tests.csproj">
-        <Build Solution="Release|*" Project="false" />
-    </Project>
+    <Project Path="tests/SampleMobile.Mobile.Tests/SampleMobile.Mobile.Tests.csproj" />
     <Project Path="tests/SampleMobile.Tests/SampleMobile.Tests.csproj" />
   </Folder>
 </Solution>

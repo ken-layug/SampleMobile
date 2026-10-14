@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 env:
-  SOLUTION_FILE: "SampleMobile.slnx"
+  SOLUTION_FILE: "SampleMobile.WebOnly.slnx"
   BUILD_CONFIGURATION: "Release"
   DOTNET_VERSION: "10.0.x"
 
@@ -33,4 +33,4 @@ jobs:
         run: dotnet build ${{ env.SOLUTION_FILE }} --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
 
       - name: Run unit and integration tests
-        run: dotnet test ${{ env.SOLUTION_FILE }} --configuration ${{ env.BUILD_CONFIGURATION }} --no-build --verbosity normal
+        run: dotnet test --solution ${{ env.SOLUTION_FILE }} --configuration ${{ env.BUILD_CONFIGURATION }} --no-build --verbosity normal
