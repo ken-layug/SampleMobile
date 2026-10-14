@@ -1,0 +1,37 @@
+<div class="table-responsive">
+    <table class="table table-sm align-middle">
+        <thead>
+            <tr>
+                <th>Handled</th>
+                <th>Simulated message id</th>
+                <th>Notification</th>
+                <th>Job / attempt</th>
+                <th>Virtual address</th>
+                <th>Simulated outcome</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Messages.Count == 0) {
+                <tr><td colspan="6" class="text-muted">The simulator hasn't handled any messages since the app started.</td></tr>
+            }
+            @foreach (var message in Messages) {
+                <tr @key="message.SimulatedMessageId">
+                    <td class="small text-nowrap">@Display.Time(message.HandledAt)</td>
+                    <td><code class="small">@message.SimulatedMessageId</code></td>
+                    <td>
+                        <div>@message.Title</div>
+                        <code class="small">@message.NotificationType</code>
+                    </td>
+                    <td class="small"><a href="deliveries/@message.DeliveryJobId">@Display.ShortId(message.DeliveryJobId)</a> #@message.AttemptNumber</td>
+                    <td><code class="small">@message.MaskedAddress</code></td>
+                    <td>
+                        <StatusBadge Badge="Display.For(DeliveryAttemptStatus.Completed, message.Outcome)" />
+                        @if (message.ErrorCode is not null) {
+                            <code class="small ms-1">@message.ErrorCode</code>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,37 @@
+@if (Targets.Count == 0) {
+    <div class="form-text">
+        This user has no enabled device registrations. The notification will still be stored in their inbox.
+    </div>
+} else {
+    <div class="list-group">
+        @foreach (var target in Targets) {
+            var inputId = $"target-{target.RegistrationId:N}";
+            <label @key="target.RegistrationId" class="list-group-item d-flex gap-2 align-items-start @(target.IsCompatible ? null : "list-group-item-light")" for="@inputId">
+                <input id="@inputId" class="form-check-input mt-1" type="checkbox"
+                       checked="@SelectedIds.Contains(target.RegistrationId)"
+                       disabled="@(!target.IsCompatible)"
+                       @onchange="() => OnToggle.InvokeAsync(target.RegistrationId)" />
+                <span class="flex-grow-1">
+                    <span class="fw-semibold">@target.ProviderDisplayName</span>
+                    <code class="ms-1">@target.ProviderId</code>
+                    @if (target.IsSimulated) {
+                        <StatusBadge Badge="Display.Simulated" />
+                    }
+                    <span class="d-block small text-muted">
+                        @target.Platform · installation @target.InstallationId · address @target.MaskedAddress
+                    </span>
+                    @if (!target.IsCompatible) {
+                        <span class="d-block small text-danger">No adapter is registered for this provider; it can't be targeted.</span>
+                    } else if (!target.IsProviderConfigured) {
+                        <span class="d-block small text-warning-emphasis">
+                            Provider not configured: the delivery will fail with a configuration error (the notification is kept).
+                        </span>
+                    }
+                </span>
+            </label>
+        }
+    </div>
+    <div class="form-text">
+        Each registration can only be sent through its own provider. Uncheck everything for an inbox-only notification.
+    </div>
+}

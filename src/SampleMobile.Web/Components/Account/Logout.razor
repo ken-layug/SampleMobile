@@ -1,0 +1,11 @@
+@page "/account/logout"
+@layout AccountLayout
+
+<PageTitle>Sign out</PageTitle>
+
+<h1 class="h4 mb-3">Sign out</h1>
+
+<form method="post" @formname="logout" @onsubmit="SignOutAsync">
+    <AntiforgeryToken />
+    <button type="submit" class="btn btn-outline-secondary w-100">Sign out of the dashboard</button>
+</form>

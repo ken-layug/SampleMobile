@@ -1,0 +1,46 @@
+@page "/compose"
+@attribute [Authorize(Policy = AuthorizationPolicies.AdminDashboard)]
+@rendermode InteractiveServer
+
+<PageTitle>Compose</PageTitle>
+
+<h1 class="h3 mb-3">Compose notification</h1>
+
+@if (Users is null) {
+    <p class="text-muted">Loading…</p>
+} else {
+    <div class="row g-4">
+        <div class="col-xl-7">
+            <div class="card">
+                <div class="card-header fw-semibold">Direct use case</div>
+                <div class="card-body">
+                    <p class="small text-muted">
+                        Stores the notification and one delivery job per selected registration in a single transaction.
+                        Nothing is sent from this request; the background worker dispatches the jobs.
+                    </p>
+                    <ComposeNotificationForm Users="Users"
+                                             NotificationTypes="NotificationTypes.Composable"
+                                             Targets="Targets"
+                                             IsSubmitting="IsSending"
+                                             OnRecipientChanged="LoadTargetsAsync"
+                                             OnSubmit="SendAsync" />
+                    <ResultAlert Result="SendResult" />
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-5">
+            <div class="card">
+                <div class="card-header fw-semibold">Domain event via transactional outbox</div>
+                <div class="card-body">
+                    <p class="small text-muted">
+                        Saves a <code>DemoAlert</code> row; its <code>DemoAlertRaised</code> event goes into the outbox in the
+                        same transaction. The outbox processor later turns it into a <code>demo.alert</code> notification for
+                        every enabled device of the recipient. Re-processing the event never creates a duplicate.
+                    </p>
+                    <RaiseDemoAlertForm Users="Users" IsSubmitting="IsRaising" OnSubmit="RaiseAlertAsync" />
+                    <ResultAlert Result="AlertResult" />
+                </div>
+            </div>
+        </div>
+    </div>
+}

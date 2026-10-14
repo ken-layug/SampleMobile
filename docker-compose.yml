@@ -1,0 +1,23 @@
+# Local development database only. The password below is a throwaway value for a
+# container bound to localhost; never reuse it for a shared or deployed database.
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: sample-mobile-postgres
+    environment:
+      POSTGRES_DB: sample_mobile
+      POSTGRES_USER: sample_mobile
+      POSTGRES_PASSWORD: sample_mobile_dev
+    ports:
+      # Host port 5433 avoids clashing with a locally installed PostgreSQL on 5432.
+      - "127.0.0.1:${SAMPLE_MOBILE_PG_PORT:-5433}:5432"
+    volumes:
+      - sample-mobile-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sample_mobile -d sample_mobile"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  sample-mobile-pgdata:

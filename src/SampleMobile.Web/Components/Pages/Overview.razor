@@ -1,0 +1,54 @@
+@page "/"
+@attribute [Authorize(Policy = AuthorizationPolicies.AdminDashboard)]
+@rendermode InteractiveServer
+
+<PageTitle>Overview</PageTitle>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Overview</h1>
+    <AutoRefresh Interval="TimeSpan.FromSeconds(5)" OnTick="RefreshAsync" />
+</div>
+
+@if (ErrorMessage is not null) {
+    <div class="alert alert-danger">@ErrorMessage</div>
+}
+
+@if (Data is null) {
+    <p class="text-muted">Loading…</p>
+} else {
+    var stats = Data.Stats;
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-4 col-xxl-2">
+            <StatCard Title="Notifications" Value="stats.TotalNotifications" Tone="primary" Hint="Canonical records in PostgreSQL" />
+        </div>
+        <div class="col-6 col-md-4 col-xxl-2">
+            <StatCard Title="Pending deliveries" Value="stats.PendingDeliveries" Tone="info" Hint="Pending, processing or awaiting retry" />
+        </div>
+        <div class="col-6 col-md-4 col-xxl-2">
+            <StatCard Title="Provider accepted" Value="stats.ProviderAcceptedDeliveries" Tone="success" Hint="Not proof of device delivery" />
+        </div>
+        <div class="col-6 col-md-4 col-xxl-2">
+            <StatCard Title="Failed deliveries" Value="stats.FailedDeliveries" Tone="danger" Hint="@($"{stats.CancelledDeliveries} more cancelled")" />
+        </div>
+        <div class="col-6 col-md-4 col-xxl-2">
+            <StatCard Title="Simulated dispatches" Value="stats.SimulatedDispatches" Tone="primary" Hint="Attempts handled by the simulator" />
+        </div>
+        <div class="col-6 col-md-4 col-xxl-2">
+            <StatCard Title="Active devices" Value="stats.ActiveDeviceRegistrations" Tone="secondary" Hint="Enabled registrations" />
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <ProviderStatusList Providers="Data.Providers" />
+        </div>
+        <div class="col-lg-5">
+            <OutboxSummary Stats="stats" />
+        </div>
+    </div>
+
+    <p class="small text-muted mt-4 mb-0">
+        <strong>Provider accepted</strong> means the push provider took the message. Whether a phone displayed it
+        is not known to the server; the inbox (and its read state) is the source of truth either way.
+    </p>
+}

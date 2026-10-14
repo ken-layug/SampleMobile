@@ -1,0 +1,45 @@
+@page "/inbox"
+@attribute [Authorize(Policy = AuthorizationPolicies.AdminDashboard)]
+@rendermode InteractiveServer
+
+<PageTitle>Inbox inspector</PageTitle>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Inbox inspector</h1>
+    <AutoRefresh Interval="TimeSpan.FromSeconds(5)" StartEnabled="false" OnTick="LoadInboxAsync" />
+</div>
+
+<p class="small text-muted">
+    Exactly what <code>GET /api/mobile/notifications</code> returns for the chosen user, read straight from PostgreSQL.
+    It doesn't depend on any push provider.
+</p>
+
+@if (Users is null) {
+    <p class="text-muted">Loading…</p>
+} else {
+    <div class="row g-2 align-items-end mb-3">
+        <div class="col-sm-6 col-lg-4">
+            <label class="form-label small" for="inbox-user">User</label>
+            <select id="inbox-user" class="form-select form-select-sm" @bind="SelectedUserId" @bind:after="SelectUserAsync">
+                <option value="">Choose a user…</option>
+                @foreach (var user in Users) {
+                    <option @key="user.Id" value="@user.Id">@user.Label</option>
+                }
+            </select>
+        </div>
+        <div class="col-sm-6 col-lg-4">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="unread-only" checked="@UnreadOnly" @onchange="ToggleUnreadOnlyAsync" />
+                <label class="form-check-label small" for="unread-only">Unread only</label>
+            </div>
+        </div>
+    </div>
+
+    @if (Inbox is not null) {
+        <p class="small">
+            <strong>@Inbox.TotalCount</strong> notification(s) shown by the filter, <strong>@Inbox.UnreadCount</strong> unread overall.
+        </p>
+        <InboxTable Items="Inbox.Items" />
+        <Pager Page="Inbox.Page" TotalPages="TotalPages" OnPageChanged="GoToPageAsync" />
+    }
+}

@@ -1,0 +1,867 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "SampleMobile mobile API",
+    "description": "Provider-neutral notification inbox and device registration API for the MAUI client. Obtain a token from POST /api/mobile/auth/login and send it as 'Authorization: Bearer {token}'.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5010/"
+    }
+  ],
+  "paths": {
+    "/api/mobile/device-registrations": {
+      "post": {
+        "tags": [
+          "Device registrations"
+        ],
+        "summary": "Registers this installation for push, or refreshes an existing registration.",
+        "description": "Idempotent per (installationId, provider): call it on every app start and whenever the provider\r\nrotates the token. The owner is always the signed-in user; if another user previously registered\r\nthe same installation, the registration moves to the caller.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDeviceRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDeviceRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDeviceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "A new registration was created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceRegistrationResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "An existing registration was refreshed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceRegistrationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "Device registrations"
+        ],
+        "summary": "Lists the signed-in user's registrations, including disabled ones. Addresses are never returned.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeviceRegistrationResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/mobile/device-registrations/{installationId}": {
+      "delete": {
+        "tags": [
+          "Device registrations"
+        ],
+        "summary": "Stops push to this installation for the given provider (call on logout).",
+        "description": "Idempotent. Only the caller's own registration can be removed; anything else is reported as 404.",
+        "parameters": [
+          {
+            "name": "installationId",
+            "in": "path",
+            "description": "The installation id used when registering.",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "name": "provider",
+            "in": "query",
+            "description": "The provider id used when registering, e.g. `fcm`.",
+            "required": true,
+            "schema": {
+              "maxLength": 50,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/mobile/auth/login": {
+      "post": {
+        "tags": [
+          "Mobile authentication"
+        ],
+        "summary": "Signs in with a user name and password and returns a bearer token.",
+        "description": "The only anonymous mobile endpoint. Repeated failures lock the account for a few minutes.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          }
+        }
+      }
+    },
+    "/api/mobile/notifications": {
+      "get": {
+        "tags": [
+          "Notification inbox"
+        ],
+        "summary": "Lists the signed-in user's notifications, newest first.",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "1-based page number.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Items per page, 1-100.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 20
+            }
+          },
+          {
+            "name": "unreadOnly",
+            "in": "query",
+            "description": "Only return unread notifications.",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/mobile/notifications/{notificationId}": {
+      "get": {
+        "tags": [
+          "Notification inbox"
+        ],
+        "summary": "Gets one notification addressed to the signed-in user.",
+        "description": "Fetch this when a push arrives: the push payload only carries the id.",
+        "parameters": [
+          {
+            "name": "notificationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/mobile/notifications/{notificationId}/read": {
+      "post": {
+        "tags": [
+          "Notification inbox"
+        ],
+        "summary": "Marks a notification read for the signed-in user.",
+        "description": "Idempotent: repeating the call keeps the original `readAt`.",
+        "parameters": [
+          {
+            "name": "notificationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DeviceRegistrationResponse": {
+        "required": [
+          "id",
+          "installationId",
+          "platform",
+          "provider",
+          "enabled",
+          "disabledReason",
+          "createdAt",
+          "updatedAt",
+          "lastSeenAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Server-side registration id.",
+            "format": "uuid"
+          },
+          "installationId": {
+            "type": "string",
+            "description": "The app-generated installation id."
+          },
+          "platform": {
+            "type": "string",
+            "description": "`android`, `ios` or `virtual`."
+          },
+          "provider": {
+            "type": "string",
+            "description": "The provider id, e.g. `fcm`."
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether pushes are currently sent to this registration."
+          },
+          "disabledReason": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "`unregistered`, `invalidatedByProvider` or `tokenReassigned` when disabled."
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "When the installation first registered.",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "When the registration last changed (token rotation, re-enable, owner change).",
+            "format": "date-time"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "description": "When the app last registered.",
+            "format": "date-time"
+          }
+        },
+        "description": "A device registration as returned to its owner. The provider address is never echoed back."
+      },
+      "LoginRequest": {
+        "required": [
+          "userName",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "userName": {
+            "maxLength": 256,
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The account's user name."
+          },
+          "password": {
+            "maxLength": 256,
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The account's password."
+          }
+        },
+        "description": "Credentials for signing in to the mobile API."
+      },
+      "LoginResponse": {
+        "required": [
+          "accessToken",
+          "tokenType",
+          "expiresAt",
+          "expiresIn"
+        ],
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "The signed access token."
+          },
+          "tokenType": {
+            "type": "string",
+            "description": "Always `Bearer`."
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "When the token stops being accepted (UTC).",
+            "format": "date-time"
+          },
+          "expiresIn": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Seconds until ExpiresAt, for clients without a reliable clock.",
+            "format": "int32"
+          }
+        },
+        "description": "A bearer token for the mobile API. Send it as `Authorization: Bearer {accessToken}`."
+      },
+      "NotificationListResponse": {
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "totalCount",
+          "unreadCount"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationResponse"
+            },
+            "description": "The notifications on this page."
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "1-based page number.",
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Requested page size.",
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Notifications matching the filter across all pages.",
+            "format": "int32"
+          },
+          "unreadCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Unread notifications for the user overall (independent of the filter), for badges.",
+            "format": "int32"
+          }
+        },
+        "description": "One page of the signed-in user's inbox, newest first."
+      },
+      "NotificationResponse": {
+        "required": [
+          "id",
+          "type",
+          "title",
+          "body",
+          "createdAt",
+          "readAt",
+          "resourceId",
+          "metadata"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Notification id; the same value arrives as `notificationId` in push data.",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "description": "Category such as `demo.alert`. Ignore types you don't recognize."
+          },
+          "title": {
+            "type": "string",
+            "description": "Display title."
+          },
+          "body": {
+            "type": "string",
+            "description": "Display body."
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "When the notification was created (UTC).",
+            "format": "date-time"
+          },
+          "readAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When this user marked it read; `null` while unread.",
+            "format": "date-time"
+          },
+          "resourceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional id of the business object the notification is about."
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Optional string key/value pairs."
+          }
+        },
+        "description": "A notification in the signed-in user's inbox. This record, not the push payload, is authoritative."
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "RegisterDeviceRequest": {
+        "required": [
+          "installationId",
+          "platform",
+          "provider",
+          "address"
+        ],
+        "type": "object",
+        "properties": {
+          "installationId": {
+            "maxLength": 128,
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A stable id the app generates once per installation (a UUID is recommended). Not the push token."
+          },
+          "platform": {
+            "maxLength": 20,
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "`android`, `ios` or `virtual`."
+          },
+          "provider": {
+            "maxLength": 50,
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The push provider the address belongs to, e.g. `fcm`. Must be a provider the server supports."
+          },
+          "address": {
+            "maxLength": 1024,
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The provider-specific address, e.g. the FCM registration token. Treated as a secret."
+          }
+        },
+        "description": "Registers (or refreshes) this app installation for push through one provider."
+      },
+      "ValidationProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "description": "Access token from POST /api/mobile/auth/login.",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Device registrations"
+    },
+    {
+      "name": "Mobile authentication"
+    },
+    {
+      "name": "Notification inbox"
+    }
+  ]
+}

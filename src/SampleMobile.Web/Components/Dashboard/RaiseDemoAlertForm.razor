@@ -1,0 +1,33 @@
+<EditForm Model="_model" OnValidSubmit="SubmitAsync" FormName="raise-demo-alert">
+    <DataAnnotationsValidator />
+
+    <div class="mb-3">
+        <label class="form-label" for="alert-recipient">Recipient</label>
+        <InputSelect id="alert-recipient" class="form-select" @bind-Value="_model.RecipientUserId">
+            <option value="">Choose a user…</option>
+            @foreach (var user in Users) {
+                <option @key="user.Id" value="@user.Id">@user.Label</option>
+            }
+        </InputSelect>
+        <ValidationMessage For="() => _model.RecipientUserId" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="alert-severity">Severity</label>
+        <InputSelect id="alert-severity" class="form-select" @bind-Value="_model.Severity">
+            @foreach (var severity in Enum.GetValues<DemoAlertSeverity>()) {
+                <option @key="severity" value="@severity">@severity</option>
+            }
+        </InputSelect>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="alert-message">Alert message</label>
+        <InputTextArea id="alert-message" class="form-control" rows="2" @bind-Value="_model.Message" />
+        <ValidationMessage For="() => _model.Message" />
+    </div>
+
+    <button type="submit" class="btn btn-outline-primary" disabled="@IsSubmitting">
+        @(IsSubmitting ? "Saving…" : "Raise DemoAlert")
+    </button>
+</EditForm>

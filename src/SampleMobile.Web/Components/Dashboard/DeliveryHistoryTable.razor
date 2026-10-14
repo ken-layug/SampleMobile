@@ -1,0 +1,58 @@
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Created</th>
+                <th>Notification</th>
+                <th>Recipient</th>
+                <th>Provider</th>
+                <th class="text-end">Attempts</th>
+                <th>Status</th>
+                <th>Last error</th>
+                <th>Last attempt</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Items.Count == 0) {
+                <tr><td colspan="9" class="text-muted">No delivery jobs yet.</td></tr>
+            }
+            @foreach (var job in Items) {
+                <tr @key="job.JobId">
+                    <td class="small text-nowrap">@Display.Time(job.CreatedAt)</td>
+                    <td>
+                        <div>@job.NotificationTitle</div>
+                        <code class="small">@job.NotificationType</code>
+                    </td>
+                    <td>
+                        <div>@job.RecipientUserName</div>
+                        <div class="small text-muted">@job.InstallationId</div>
+                    </td>
+                    <td>
+                        <code>@job.ProviderId</code>
+                        @if (job.IsSimulated) {
+                            <StatusBadge Badge="Display.Simulated" />
+                        }
+                    </td>
+                    <td class="text-end">@job.AttemptCount</td>
+                    <td>
+                        <StatusBadge Badge="Display.For(job.Status)" />
+                        @if (job.Status == DeliveryJobStatus.RetryScheduled) {
+                            <div class="small text-muted">next @Display.Time(job.NextAttemptAt)</div>
+                        }
+                    </td>
+                    <td class="small">
+                        @if (job.LastErrorCode is not null) {
+                            <code>@job.LastErrorCode</code>
+                            <div class="text-muted text-truncate" style="max-width: 18rem;" title="@job.LastErrorMessage">@job.LastErrorMessage</div>
+                        } else {
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
+                    <td class="small text-nowrap">@Display.Time(job.LastAttemptAt)</td>
+                    <td><a href="deliveries/@job.JobId">Attempts</a></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

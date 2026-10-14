@@ -1,0 +1,34 @@
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Installation</th>
+                <th>Platform</th>
+                <th>Provider</th>
+                <th>Address</th>
+                <th>Status</th>
+                <th>Last registered / updated</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Items.Count == 0) {
+                <tr><td colspan="7" class="text-muted">No registrations.</td></tr>
+            }
+            @foreach (var item in Items) {
+                <tr @key="item.RegistrationId">
+                    <td>@item.UserName</td>
+                    <td><code class="small">@item.InstallationId</code></td>
+                    <td>@item.Platform</td>
+                    <td><code>@item.ProviderId</code></td>
+                    <td><code class="small" title="Masked: provider tokens are never shown in full">@item.MaskedAddress</code></td>
+                    <td><StatusBadge Badge="Display.ForRegistration(item.IsEnabled, item.DisabledReason)" /></td>
+                    <td class="small">
+                        <div>Seen @Display.Time(item.LastSeenAt)</div>
+                        <div class="text-muted">Updated @Display.Time(item.UpdatedAt)</div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

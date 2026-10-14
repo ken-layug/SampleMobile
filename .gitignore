@@ -480,3 +480,8 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Firebase / Google service-account credentials must never be committed.
+*firebase-adminsdk*.json
+*service-account*.json
+secrets/

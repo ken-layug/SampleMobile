@@ -1,9 +1,35 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <OutputType>Exe</OutputType>
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\src\SampleMobile.Domain\SampleMobile.Domain.csproj" />
+      <ProjectReference Include="..\..\src\SampleMobile.Application\SampleMobile.Application.csproj" />
+      <ProjectReference Include="..\..\src\SampleMobile.Infrastructure\SampleMobile.Infrastructure.csproj" />
+      <ProjectReference Include="..\..\src\SampleMobile.Web\SampleMobile.Web.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+      <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+      <PackageReference Include="Microsoft.NET.Test.Sdk" />
+      <PackageReference Include="NSubstitute" />
+      <PackageReference Include="Testcontainers.PostgreSql" />
+      <PackageReference Include="xunit.runner.visualstudio">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+      <PackageReference Include="xunit.v3" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Using Include="Xunit" />
+    </ItemGroup>
 
 </Project>

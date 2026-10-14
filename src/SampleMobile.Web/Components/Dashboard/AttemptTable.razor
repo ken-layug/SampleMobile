@@ -1,0 +1,43 @@
+<div class="table-responsive">
+    <table class="table table-sm align-middle">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Provider</th>
+                <th>Result</th>
+                <th>Provider message id</th>
+                <th>Error</th>
+                <th>Started</th>
+                <th>Completed</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Attempts.Count == 0) {
+                <tr><td colspan="7" class="text-muted">No attempts yet; the job is waiting for the worker.</td></tr>
+            }
+            @foreach (var attempt in Attempts) {
+                <tr @key="attempt.AttemptNumber">
+                    <td>@attempt.AttemptNumber</td>
+                    <td>
+                        <code>@attempt.ProviderId</code>
+                        @if (attempt.IsSimulated) {
+                            <StatusBadge Badge="Display.Simulated" />
+                        }
+                    </td>
+                    <td><StatusBadge Badge="Display.For(attempt.Status, attempt.Outcome)" /></td>
+                    <td><code class="small">@(attempt.ProviderMessageId ?? "—")</code></td>
+                    <td class="small">
+                        @if (attempt.ErrorCode is not null) {
+                            <code>@attempt.ErrorCode</code>
+                            <div class="text-muted">@attempt.ErrorMessage</div>
+                        } else {
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
+                    <td class="small text-nowrap">@Display.Time(attempt.StartedAt)</td>
+                    <td class="small text-nowrap">@Display.Time(attempt.CompletedAt)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
