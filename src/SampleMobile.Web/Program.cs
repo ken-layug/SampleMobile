@@ -16,6 +16,7 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddServiceDefaults();
 builder.Services.AddApplication();
 builder.AddInfrastructure();
 
@@ -108,6 +109,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 
+app.MapDefaultEndpoints();
 app.MapStaticAssets();
 app.MapControllers();
 

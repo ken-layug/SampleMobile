@@ -8,6 +8,7 @@ Provider-agnostic notification POC: ASP.NET Core 10, Blazor (per-page Interactiv
 - `Application`: use cases in `Features/{Feature}/{UseCase}.cs` (request record and handler in one file, dispatched through `ISender`); ports in `Abstractions/`; it only references `Microsoft.Extensions.*.Abstractions`/`Options`.
 - `Infrastructure`: the only place that names a vendor (EF Core, Npgsql, Identity, FirebaseAdmin). Provider ids such as `"fcm"`/`"simulated"` live in `Push/PushProviderIds.cs`, never in Application.
 - `Web`: composition root, controllers, Blazor components. The mobile user id always comes from `User.GetUserId()`.
+- `ServiceDefaults` (OTel, `/health`/`/alive`, resilience) is referenced only by `Web`; `AppHost` (Aspire) only orchestrates PostgreSQL, pgAdmin and `Web`. Neither holds application code.
 
 ## Conventions that aren't obvious from one file
 
@@ -21,7 +22,8 @@ Provider-agnostic notification POC: ASP.NET Core 10, Blazor (per-page Interactiv
 ## Commands
 
 ```bash
-docker compose up -d                                   # PostgreSQL on localhost:5433
+aspire start                                           # AppHost: PostgreSQL + pgAdmin + web, with dashboard (aspire stop to end)
+docker compose up -d                                   # PostgreSQL on localhost:5433 (non-Aspire flow; dotnet ef targets this DB)
 dotnet run --project src/SampleMobile.Web --launch-profile http
 dotnet build SampleMobile.slnx
 dotnet test                                            # needs Docker (Testcontainers)

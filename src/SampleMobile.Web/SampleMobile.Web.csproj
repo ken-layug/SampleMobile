@@ -13,6 +13,7 @@
     <ItemGroup>
       <ProjectReference Include="..\SampleMobile.Application\SampleMobile.Application.csproj" />
       <ProjectReference Include="..\SampleMobile.Infrastructure\SampleMobile.Infrastructure.csproj" />
+      <ProjectReference Include="..\SampleMobile.ServiceDefaults\SampleMobile.ServiceDefaults.csproj" />
     </ItemGroup>
 
     <ItemGroup>
