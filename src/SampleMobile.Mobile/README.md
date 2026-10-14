@@ -122,9 +122,9 @@ The login screen has a **Backend URL** field. It is stored in Preferences and ca
 |---|---|---|
 | Android emulator (Debug default) | `http://10.0.2.2:5010` | `dotnet run --project src/SampleMobile.Web --launch-profile http`, or `aspire start` (web keeps port 5010) |
 | USB-connected phone (recommended) | `http://localhost:5010` | Same, plus `adb reverse tcp:5010 tcp:5010`. No firewall rule or LAN exposure needed. |
-| Phone on the same Wi-Fi | `http://<dev-machine-LAN-IP>:5010` | Start with `--urls http://0.0.0.0:5010` and allow port 5010 through the firewall. Then add the IP as a `<domain>` in `Platforms/Android/Resources/xml/network_security_config_debug.xml`, because cleartext is otherwise refused. |
+| Phone on the same Wi-Fi | `http://<dev-machine-LAN-IP>:5010` | `aspire start` (it listens on all interfaces), or `dotnet run` with `--urls http://0.0.0.0:5010`. Allow inbound TCP 5010 through the firewall (Private profile). Then add the IP as a `<domain>` in `Platforms/Android/Resources/xml/network_security_config_debug.xml`, because cleartext is otherwise refused. |
 
-The `10.0.2.2` alias works with Aspire too: the AppHost runs the web project with its `http` profile on port 5010, bound to the host's loopback. Aspire does not start the app; launch it separately.
+The `10.0.2.2` alias works with Aspire too: the AppHost runs the web project with its `http` profile on port 5010. In run mode it binds that endpoint to `0.0.0.0` (`AppHost.cs`), so the same port also answers on the LAN IP. Aspire does not start the app; launch it separately.
 
 ## Development HTTPS
 

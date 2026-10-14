@@ -195,7 +195,7 @@ Also confirm:
 
 **C. Android device with FCM** (needs the [MAUI app](src/SampleMobile.Mobile/README.md) and Firebase credentials; its README has the full device checklist):
 
-1. Configure Firebase (above) and put the app's `google-services.json` in `src/SampleMobile.Mobile/Platforms/Android/`. On an emulator, the default backend URL `http://10.0.2.2:5010` works as is. For a USB device, run `adb reverse tcp:5010 tcp:5010` and use `http://localhost:5010`.
+1. Configure Firebase (above) and put the app's `google-services.json` in `src/SampleMobile.Mobile/Platforms/Android/`. On an emulator, the default backend URL `http://10.0.2.2:5010` works as is. For a USB device, run `adb reverse tcp:5010 tcp:5010` and use `http://localhost:5010`. For a phone on the same Wi-Fi under `aspire start`, use `http://<your-LAN-IP>:5010` (see the app README for the firewall and cleartext steps).
 2. Run the app (`dotnet build src/SampleMobile.Mobile -t:Run -f net10.0-android`) and sign in as `alice`. The app registers itself with `provider: "fcm"` and the FCM registration token.
 3. Registered devices shows the Android `fcm` registration (token masked).
 4. Compose to Alice, targeting the Android registration. Delivery history shows *Provider accepted* with an FCM message id, and the device shows the notification. Tapping it should open the item fetched from the inbox API.
