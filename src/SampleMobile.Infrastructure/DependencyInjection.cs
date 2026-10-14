@@ -19,6 +19,7 @@ using SampleMobile.Infrastructure.Persistence;
 using SampleMobile.Infrastructure.Persistence.Interceptors;
 using SampleMobile.Infrastructure.Persistence.Repositories;
 using SampleMobile.Infrastructure.Persistence.Seeding;
+using SampleMobile.Infrastructure.Push.Firebase;
 using SampleMobile.Infrastructure.Push.Simulated;
 
 namespace SampleMobile.Infrastructure;
@@ -38,6 +39,7 @@ public static class DependencyInjection {
         services.AddOptions<SimulatedProviderOptions>().Bind(configuration.GetSection(SimulatedProviderOptions.SectionName));
 
         services.AddOptions<OutboxOptions>().Bind(configuration.GetSection(OutboxOptions.SectionName));
+        services.AddOptions<FirebaseOptions>().Bind(configuration.GetSection(FirebaseOptions.SectionName));
 
         AddPersistence(services, configuration);
         AddIdentity(services);
@@ -106,5 +108,10 @@ public static class DependencyInjection {
         services.AddSingleton<SimulatedPushControl>();
         services.AddSingleton<ISimulatedPushControl>(provider => provider.GetRequiredService<SimulatedPushControl>());
         services.AddSingleton<IPushNotificationProvider, SimulatedPushNotificationProvider>();
+
+        // Registered even without credentials: FCM registrations must still resolve to FCM (and fail with a
+        // configuration error) rather than look "unsupported" or be routed anywhere else.
+        services.AddSingleton<FirebaseMessagingClient>();
+        services.AddSingleton<IPushNotificationProvider, FirebasePushNotificationProvider>();
     }
 }
