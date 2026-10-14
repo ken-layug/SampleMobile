@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="SampleMobile.Mobile.Views.StartupPage"
+             Shell.NavBarIsVisible="False">
+    <VerticalStackLayout VerticalOptions="Center" Spacing="16">
+        <ActivityIndicator IsRunning="True" />
+        <Label Text="Starting…" HorizontalOptions="Center" Style="{StaticResource Caption}" />
+    </VerticalStackLayout>
+</ContentPage>

@@ -111,6 +111,17 @@ Exactly-once delivery to an external system is not achievable here. If the proce
 
 None of the following change: Domain entities, `NotificationPublisher`, `NotificationDispatcher`, the use cases, the mobile API, or the dashboard. The resolver and dashboard discover the new provider through DI.
 
+## Mobile client
+
+The .NET MAUI Android app ([src/SampleMobile.Mobile/README.md](../src/SampleMobile.Mobile/README.md)) mirrors the backend's provider boundary on the device.
+
+- **Two projects.** `SampleMobile.Mobile.Core` (net10.0) contains the API client, session, inbox, registration lifecycle and view models, and references no MAUI, Android or Firebase package. `SampleMobile.Mobile` (net10.0-android) adds the pages and the Android integration. Firebase SDK calls live only in `Platforms/Android/Push/Firebase/`, behind `IPushTransport`.
+- **Content comes from the API.** A push is a hint: the app fetches `GET /api/mobile/notifications/{notificationId}` and renders that, never the payload text. A `404` (another user's notification) is ignored. The inbox is keyed by notification id, so at-least-once delivery doesn't duplicate entries.
+- **One tray entry per notification.** The app's own notifications use tag = notificationId, like the backend's FCM messages, so a notification shown by the app and one shown by Android replace each other.
+- **Registration lifecycle.** The `installationId` is a GUID generated once. The FCM token is persisted before it is sent and re-sent on rotation, after a transient failure (bounded backoff, reconnect, resume, next launch) and on every login. A new login therefore moves a shared installation to its new owner.
+- **Logout.** Logout records a cleanup (DELETE with the user's token, then delete the FCM token) before discarding the token, and retries whatever couldn't run offline.
+- **Without FCM.** If FCM isn't configured or Play services are missing, the app registers as `simulated` and works inbox-only.
+
 ## Security notes
 
 - Provider addresses (FCM tokens) are effectively credentials for pushing to a device. They are never returned by the mobile API, are masked on the dashboard (`fXyz12…a9Bc`), and are masked in every log line.

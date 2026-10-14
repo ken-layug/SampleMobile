@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:SampleMobile.Mobile.Core.ViewModels;assembly=SampleMobile.Mobile.Core"
+             x:Class="SampleMobile.Mobile.Views.DiagnosticsPage"
+             x:DataType="vm:DiagnosticsViewModel"
+             Title="Diagnostics">
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="12">
+            <Border Style="{StaticResource WarningBanner}">
+                <Label Style="{StaticResource BannerText}"
+                       Text="Development only. Tokens are never shown; provider addresses are masked." />
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="2">
+                    <Label Text="Backend" Style="{StaticResource Caption}" />
+                    <Label Text="{Binding BackendUrl}" Style="{StaticResource Value}" />
+                    <Label Text="API connection" Style="{StaticResource Caption}" Margin="0,8,0,0" />
+                    <Label Text="{Binding ApiStatus}" Style="{StaticResource Value}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="2">
+                    <Label Text="Provider" Style="{StaticResource Caption}" />
+                    <Label Text="{Binding Provider}" Style="{StaticResource Value}" />
+                    <Label Text="Transport status" Style="{StaticResource Caption}" Margin="0,8,0,0" />
+                    <Label Text="{Binding TransportStatus}" Style="{StaticResource Value}" />
+                    <Label Text="Registration address (masked)" Style="{StaticResource Caption}" Margin="0,8,0,0" />
+                    <Label Text="{Binding MaskedAddress}" Style="{StaticResource Value}" FontFamily="monospace" />
+                    <Label Text="{Binding AddressStatus}" Style="{StaticResource Caption}" />
+                    <Label Text="Installation id" Style="{StaticResource Caption}" Margin="0,8,0,0" />
+                    <Label Text="{Binding InstallationId}" Style="{StaticResource Value}" FontFamily="monospace" />
+                    <Label Text="Platform" Style="{StaticResource Caption}" Margin="0,8,0,0" />
+                    <Label Text="{Binding Platform}" Style="{StaticResource Value}" />
+                    <Label Text="Notification permission" Style="{StaticResource Caption}" Margin="0,8,0,0" />
+                    <Label Text="{Binding PermissionStatus}" Style="{StaticResource Value}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="2">
+                    <Label Text="Last registration result" Style="{StaticResource Caption}" />
+                    <Label Text="{Binding RegistrationResult}" Style="{StaticResource Value}" />
+                    <Label Text="Pending sign-out cleanup" Style="{StaticResource Caption}" Margin="0,8,0,0" />
+                    <Label Text="{Binding PendingCleanup}" Style="{StaticResource Value}" />
+                    <Label Text="Last push event" Style="{StaticResource Caption}" Margin="0,8,0,0" />
+                    <Label Text="{Binding LastPushEvent}" Style="{StaticResource Value}" />
+                    <Label Text="Inbox" Style="{StaticResource Caption}" Margin="0,8,0,0" />
+                    <Label Text="{Binding InboxStatus}" Style="{StaticResource Value}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            <Button Text="Refresh registration" Command="{Binding RefreshRegistrationCommand}" />
+            <Button Text="Check API connection" Command="{Binding CheckApiCommand}" />
+            <Button Text="Sync inbox now" Command="{Binding SyncInboxCommand}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:SampleMobile.Mobile.Core.ViewModels;assembly=SampleMobile.Mobile.Core"
+             x:Class="SampleMobile.Mobile.Views.HomePage"
+             x:DataType="vm:HomeViewModel"
+             Title="Home">
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="12">
+            <Border Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="2">
+                    <Label Text="Signed in as" Style="{StaticResource Caption}" />
+                    <Label Text="{Binding SignedInAs}" Style="{StaticResource PageTitle}" />
+                    <Label Text="{Binding SessionExpires, StringFormat='Session expires {0}'}" Style="{StaticResource Caption}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Push transport" Style="{StaticResource SectionTitle}" />
+                    <Label Text="{Binding ProviderName}" Style="{StaticResource Value}" />
+                    <Label Text="{Binding ProviderId, StringFormat='Provider id: {0}'}" Style="{StaticResource Caption}" />
+                    <Label Text="{Binding TransportStatus}" Style="{StaticResource Caption}" />
+                    <Border Style="{StaticResource WarningBanner}" IsVisible="{Binding IsInboxOnly}" Margin="0,6,0,0">
+                        <Label Style="{StaticResource BannerText}"
+                               Text="Inbox-only mode: this device gets no background push. The inbox syncs at launch, on resume and with pull-to-refresh." />
+                    </Border>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Notification permission" Style="{StaticResource SectionTitle}" />
+                    <Label Text="{Binding PermissionStatus}" Style="{StaticResource Value}" />
+                    <Button Text="Allow notifications" Command="{Binding RequestPermissionCommand}" IsVisible="{Binding IsPermissionDenied}" Margin="0,6,0,0" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Device registration" Style="{StaticResource SectionTitle}" />
+                    <Label Text="{Binding RegistrationStatus}" Style="{StaticResource Value}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Inbox" Style="{StaticResource SectionTitle}" />
+                    <Label Text="{Binding UnreadCount, StringFormat='{0} unread'}" Style="{StaticResource Value}" />
+                    <Label Text="{Binding LastInboxRefresh, StringFormat='Last refresh: {0}'}" Style="{StaticResource Caption}" />
+                    <Button Text="Open inbox" Command="{Binding OpenInboxCommand}" Margin="0,6,0,0" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Button Text="Sign out" Command="{Binding LogoutCommand}" BackgroundColor="{StaticResource Gray600}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

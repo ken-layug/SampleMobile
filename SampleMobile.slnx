@@ -4,10 +4,13 @@
     <Project Path="src/SampleMobile.Application/SampleMobile.Application.csproj" />
     <Project Path="src/SampleMobile.Domain/SampleMobile.Domain.csproj" />
     <Project Path="src/SampleMobile.Infrastructure/SampleMobile.Infrastructure.csproj" />
+    <Project Path="src/SampleMobile.Mobile.Core/SampleMobile.Mobile.Core.csproj" />
+    <Project Path="src/SampleMobile.Mobile/SampleMobile.Mobile.csproj" />
     <Project Path="src/SampleMobile.ServiceDefaults/SampleMobile.ServiceDefaults.csproj" />
     <Project Path="src/SampleMobile.Web/SampleMobile.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/SampleMobile.Mobile.Tests/SampleMobile.Mobile.Tests.csproj" />
     <Project Path="tests/SampleMobile.Tests/SampleMobile.Tests.csproj" />
   </Folder>
 </Solution>
