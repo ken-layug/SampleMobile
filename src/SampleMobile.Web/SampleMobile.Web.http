@@ -1,0 +1,186 @@
+### SampleMobile mobile API — manual test harness
+#
+# Written for the JetBrains Rider HTTP client: response handlers (`> {% ... %}`) store the access token and a
+# notification id in client.global, and the client.test blocks check the expected status codes.
+# Visual Studio users: replace `{{accessToken}}` with `{{login.response.body.$.accessToken}}` and add
+# `# @name login` above the first request instead of relying on the handler scripts.
+#
+# Prerequisites:
+#   docker compose up -d
+#   dotnet run --project src/SampleMobile.Web --launch-profile http
+# For the inbox requests to return something, sign in to the dashboard (http://localhost:5010) as the demo admin
+# and Compose a notification to Alice first (or Raise a DemoAlert for her).
+#
+# The accounts below are the Development-only demo seed from appsettings.Development.json (DemoSeed);
+# they exist only in a local Development database and are not real credentials.
+
+@baseUrl = http://localhost:5010
+@aliceUserName = alice
+@alicePassword = Alice#Demo2026
+@bobUserName = bob
+@bobPassword = Bob#Demo2026
+@installationId = 0b6f0c7e-2b8f-4f4e-9a37-3c1f6c7f5a10
+
+### Sign in as Alice and keep the token for the requests below
+POST {{baseUrl}}/api/mobile/auth/login
+Content-Type: application/json
+
+{
+  "userName": "{{aliceUserName}}",
+  "password": "{{alicePassword}}"
+}
+
+> {%
+    client.test("Login succeeds", () => client.assert(response.status === 200, `Expected 200, got ${response.status}`));
+    client.global.set("accessToken", response.body.accessToken);
+%}
+
+### Error path: wrong password → 401 problem details (same response for unknown users and locked accounts)
+POST {{baseUrl}}/api/mobile/auth/login
+Content-Type: application/json
+
+{
+  "userName": "{{aliceUserName}}",
+  "password": "not-the-password"
+}
+
+> {% client.test("Wrong password is rejected", () => client.assert(response.status === 401)); %}
+
+### Error path: missing password → 400 validation problem keyed by "password"
+POST {{baseUrl}}/api/mobile/auth/login
+Content-Type: application/json
+
+{
+  "userName": "{{aliceUserName}}"
+}
+
+> {% client.test("Missing password is a validation error", () => client.assert(response.status === 400 && response.body.errors.password !== undefined)); %}
+
+### Error path: no bearer token → 401
+GET {{baseUrl}}/api/mobile/notifications
+
+> {% client.test("Token required", () => client.assert(response.status === 401)); %}
+
+### Register this installation on the simulated provider (201 the first time, 200 on repeats)
+POST {{baseUrl}}/api/mobile/device-registrations
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "installationId": "{{installationId}}",
+  "platform": "android",
+  "provider": "simulated",
+  "address": "sim-http-file-device-token-1"
+}
+
+> {% client.test("Registered", () => client.assert(response.status === 201 || response.status === 200)); %}
+
+### Token rotation: same installation and provider, new address → 200 with the same registration id
+POST {{baseUrl}}/api/mobile/device-registrations
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "installationId": "{{installationId}}",
+  "platform": "android",
+  "provider": "simulated",
+  "address": "sim-http-file-device-token-2"
+}
+
+> {% client.test("Refreshed in place", () => client.assert(response.status === 200)); %}
+
+# To register a real device instead, send "provider": "fcm" with the FCM registration token from the MAUI app
+# as "address". It is not included here so running the whole file never leaves a fake FCM device behind.
+
+### Error path: unsupported provider → 400 listing the supported providers
+POST {{baseUrl}}/api/mobile/device-registrations
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "installationId": "{{installationId}}",
+  "platform": "android",
+  "provider": "onesignal",
+  "address": "anything"
+}
+
+> {% client.test("Unknown provider rejected", () => client.assert(response.status === 400 && response.body.errors.provider !== undefined)); %}
+
+### List Alice's device registrations (provider addresses are never returned)
+GET {{baseUrl}}/api/mobile/device-registrations
+Authorization: Bearer {{accessToken}}
+
+### Inbox, newest first; keeps the first notification's id for the requests below
+GET {{baseUrl}}/api/mobile/notifications?page=1&pageSize=20
+Authorization: Bearer {{accessToken}}
+
+> {%
+    client.test("Inbox loads", () => client.assert(response.status === 200));
+    if (response.body.items.length > 0) {
+        client.global.set("notificationId", response.body.items[0].id);
+    }
+%}
+
+### Unread notifications only
+GET {{baseUrl}}/api/mobile/notifications?page=1&pageSize=20&unreadOnly=true
+Authorization: Bearer {{accessToken}}
+
+### Error path: invalid paging → 400 validation problem
+GET {{baseUrl}}/api/mobile/notifications?page=0&pageSize=500
+Authorization: Bearer {{accessToken}}
+
+> {% client.test("Paging validated", () => client.assert(response.status === 400)); %}
+
+### One notification (what the app fetches when a push arrives)
+GET {{baseUrl}}/api/mobile/notifications/{{notificationId}}
+Authorization: Bearer {{accessToken}}
+
+### Mark it read — run twice: readAt stays the same (idempotent)
+POST {{baseUrl}}/api/mobile/notifications/{{notificationId}}/read
+Authorization: Bearer {{accessToken}}
+
+> {% client.test("Marked read", () => client.assert(response.status === 200 && response.body.readAt !== null)); %}
+
+### Error path: a notification that doesn't exist (or isn't yours) → 404
+GET {{baseUrl}}/api/mobile/notifications/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{accessToken}}
+
+> {% client.test("Unknown notification is 404", () => client.assert(response.status === 404)); %}
+
+### Sign in as Bob to check user isolation
+POST {{baseUrl}}/api/mobile/auth/login
+Content-Type: application/json
+
+{
+  "userName": "{{bobUserName}}",
+  "password": "{{bobPassword}}"
+}
+
+> {% client.global.set("bobAccessToken", response.body.accessToken); %}
+
+### Error path: Bob cannot read Alice's notification → 404, indistinguishable from a missing one
+GET {{baseUrl}}/api/mobile/notifications/{{notificationId}}
+Authorization: Bearer {{bobAccessToken}}
+
+> {% client.test("Other users' notifications are hidden", () => client.assert(response.status === 404)); %}
+
+### Error path: Bob cannot unregister Alice's installation → 404
+DELETE {{baseUrl}}/api/mobile/device-registrations/{{installationId}}?provider=simulated
+Authorization: Bearer {{bobAccessToken}}
+
+> {% client.test("Other users' devices are hidden", () => client.assert(response.status === 404)); %}
+
+### Error path: unregister without the provider query parameter → 400
+DELETE {{baseUrl}}/api/mobile/device-registrations/{{installationId}}
+Authorization: Bearer {{accessToken}}
+
+> {% client.test("Provider required", () => client.assert(response.status === 400)); %}
+
+### Unregister Alice's installation on logout → 204 (idempotent; registering again re-enables it)
+DELETE {{baseUrl}}/api/mobile/device-registrations/{{installationId}}?provider=simulated
+Authorization: Bearer {{accessToken}}
+
+> {% client.test("Unregistered", () => client.assert(response.status === 204)); %}
+
+### OpenAPI document (Development only)
+GET {{baseUrl}}/openapi/v1.json

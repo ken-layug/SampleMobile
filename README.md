@@ -127,6 +127,7 @@ The service account needs permission to send FCM messages (the default *Firebase
 - Contract and client guidance: [docs/mobile-api-contract.md](docs/mobile-api-contract.md)
 - OpenAPI document: [docs/openapi/mobile-v1.json](docs/openapi/mobile-v1.json), or live at `/openapi/v1.json` in Development
 - Interactive reference (Development): <http://localhost:5010/scalar>
+- Manual test harness: [src/SampleMobile.Web/SampleMobile.Web.http](src/SampleMobile.Web/SampleMobile.Web.http). It has one request per endpoint plus the error paths (401, 400 validation, 404 cross-user). It is written for Rider's HTTP client; the response scripts store the token and check status codes.
 
 ## Tests
 
