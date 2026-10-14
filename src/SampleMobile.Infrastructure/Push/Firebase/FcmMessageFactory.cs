@@ -37,8 +37,8 @@ internal static class FcmMessageFactory {
             Data = data,
             Android = new AndroidConfig {
                 Priority = Priority.High,
-                // Per-notification collapse key and tag: if an at-least-once retry sends the same notification
-                // twice, the second one replaces the first in the tray instead of stacking.
+                // The tag supports tray replacement. Notification messages ignore CollapseKey;
+                // it is not a delivery deduplication guarantee (see docs/firebase-messaging-flow.md).
                 CollapseKey = notificationId,
                 Notification = new AndroidNotification {
                     Tag = notificationId,

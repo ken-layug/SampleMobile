@@ -6,6 +6,8 @@ An Android-first .NET MAUI 10 app that receives notifications from the SampleMob
 
 The app is **not** launched by Aspire. Start the backend first with `aspire start` or `dotnet run`, then run the app separately. See [Run](#run).
 
+Start with the [Firebase learning guide](../../docs/firebase-messaging-flow.md) for concepts, diagrams, and a worked trace.
+
 ## Contents
 
 - [Projects and boundaries](#projects-and-boundaries)
@@ -94,7 +96,7 @@ Manifest and other build-time settings:
 
 ## Firebase setup
 
-Firebase is optional. Without it the app runs in inbox-only mode.
+Firebase is optional. Without it the app runs in inbox-only mode. If Firebase is new to you, first read the [concepts and diagrams](../../docs/firebase-messaging-flow.md), then follow these client setup steps and the linked backend setup.
 
 1. In the [Firebase console](https://console.firebase.google.com/), open (or create) the project the backend uses, then **add an Android app** with package name **`xyz.kiaranet.samplemobile`**.
 2. Download `google-services.json` and put it at `src/SampleMobile.Mobile/Platforms/Android/google-services.json`.
@@ -110,7 +112,7 @@ The app uses only Firebase Cloud Messaging. Firebase Authentication, Firestore a
 
 About registration tokens:
 
-- firebase-messaging 25 marks the registration-token APIs (`getToken`, `onNewToken`, `deleteToken`) deprecated in favour of Firebase Installation IDs.
+- This implementation uses the versions pinned in [Directory.Packages.props](../../Directory.Packages.props). Compatibility comments and scoped deprecation suppressions live beside the actual calls in [FirebaseAndroidPushTransport](Platforms/Android/Push/Firebase/FirebaseAndroidPushTransport.cs) and [SampleFirebaseMessagingService](Platforms/Android/Push/Firebase/SampleFirebaseMessagingService.cs); recheck them when upgrading SDKs.
 - The backend's provider id `fcm` means "address = FCM registration token" (see `FcmMessageFactory`), so the transport uses the token APIs on purpose, with a scoped warning suppression.
 - Moving to FIDs would be a new provider id with its own address type.
 
@@ -177,7 +179,7 @@ Login ─► POST /api/mobile/auth/login ─► token in SecureStorage (never Pr
 |---|---|
 | App start with a stored session | The same pipeline runs. The registration is posted once per launch, which also updates the backend's `lastSeenAt`. |
 | FCM rotates the token (`onNewToken`) | The new token is persisted, then posted if a user is signed in. This also works in a process FCM started without UI. |
-| Same user and token posted again | Nothing is sent. Only a changed fingerprint (user + provider + installation + token) causes a POST. |
+| Same user and token on an ordinary sync | An unchanged fingerprint (user + provider + installation + token) skips the POST unless work is dirty. Login, the first successful app-start sync, and manual refresh force a POST. |
 | Network down or 5xx | The latest token is kept and marked dirty. Retries come after 15 s, 1 min and 5 min, on reconnect, on resume and at the next launch. This is not polling. |
 | `409` | Retried once, per the contract. |
 | `400` | Recorded and not retried. |
@@ -188,14 +190,16 @@ On **logout**, the app:
 1. Persists a cleanup record holding the user's token.
 2. Signs out, which clears the token, the inbox, any pending navigation and the app's tray notifications.
 3. Calls `DELETE /api/mobile/device-registrations/{installationId}?provider=fcm` with that token.
-4. Deletes the FCM token, so any registration the backend still holds becomes undeliverable.
+4. Attempts to reset the FCM token even if DELETE failed transiently. Until cleanup succeeds, offline logout does not guarantee remote revocation or recall of queued messages.
+
+See the [authoritative logout sequence](../../docs/firebase-messaging-flow.md#4-logout-and-offline-cleanup). The saved cleanup JWT is separate from the cleared active session.
 
 If either step fails offline, it stays pending and is retried on reconnect, on resume and at the next launch:
 
-- The DELETE is dropped once the saved token has expired (8 h).
+- The DELETE is dropped once the saved token has expired (the default JWT lifetime is 8 h, measured from issuance).
 - The FCM token reset is retried until it succeeds; it is the revocation that still works after the token expires.
 
-**Shared device:** the next login always posts the registration, and the backend moves the installation to the new user. A successful registration supersedes any older cleanup for the same installation and provider. A push for another user's notification returns `404` and is ignored.
+**Shared device:** the next login always posts the registration, and the backend moves the installation to the new user. A successful registration supersedes any older cleanup for the same installation and provider. An API fetch for another user's notification returns `404` and is ignored. This does not prevent Android from having already displayed background payload text before the fetch.
 
 ## Verify incoming notifications
 
@@ -220,12 +224,14 @@ The backend sends a `notification` block (title, body) plus `data { notification
 | Foreground | Calls `FirebaseMessagingService.OnMessageReceived` and shows nothing itself. | `GET /notifications/{id}`, then updates the inbox and posts a local notification with **API** text, with tag = id. If the API is unreachable it shows a content-free "New notification" and fetches on the next redelivery or refresh. A 404 (not this user's) shows nothing. |
 | Background | Shows the tray notification itself, from the `notification` block. **`OnMessageReceived` is not called.** | Nothing until the user taps or returns; on resume the inbox refreshes. |
 | Terminated (swiped away, normal close) | Same as background: Android shows the tray notification. | The tap starts the process. `MainActivity.OnCreate` reads `notificationId` from the launch intent extras. The session is restored (or the user signs in), then the detail page fetches the notification from the API. |
-| Force-stopped (Settings → Force stop), or device offline | Android does not deliver FCM to force-stopped apps. Offline devices get messages later, within FCM's TTL. | Nothing. The next launch or refresh shows everything, because the inbox comes from the backend. Push delivery is never guaranteed. |
+| Force-stopped (Settings → Force stop), or device offline | Android does not deliver FCM to force-stopped apps. Offline messages may arrive later within FCM's TTL, subject to collapsing and other delivery limits. | The next launch or refresh loads the newest 50 inbox items from the backend. Push delivery is never guaranteed. |
 
-How duplicates are avoided:
+How duplicate effects are reduced:
+
+Provider-side collapsing is separate from all three mechanisms below. The factory sets `collapse_key`, but Firebase notification messages ignore it; collapsible-message storage also has a four-key limit. See [Firebase collapse semantics](https://firebase.google.com/docs/cloud-messaging/customize-messages/collapsible-message-types).
 
 - **Tray entries:** the local notification uses the same tag (notification id) and id (`0`) as FCM's own tray entry, so a notification shown by the app and one shown by Android replace each other instead of stacking.
-- **Repeated deliveries:** the processor remembers handled ids, because delivery is at-least-once.
+- **Repeated deliveries:** the processor tracks in-flight IDs and the most recent 200 handled IDs in memory. The cache resets on session changes and process restart; it is not durable exactly-once processing.
 - **Inbox items:** the inbox is keyed by backend id.
 
 How taps are handled:
@@ -307,12 +313,16 @@ Use a Google Play emulator or a physical device, the backend running, and `googl
 | 3 | Closed normally | Swipe the app away from Recents. Compose. Tap the notification. | Cold start, session restored, detail page opens. Back goes to Home. |
 | 4 | Tap navigation | Send two notifications. Tap the older tray entry. | The detail page of that id, not the latest. |
 | 5 | Permission denied | Fresh install on Android 13+, deny the prompt. | Home shows "Blocked". No tray entries, but the inbox still fills on refresh. "Allow notifications" opens app settings. |
-| 6 | Device offline | Airplane mode, then compose (backend reports *Provider accepted*). Turn the network back on. | Nothing arrives while offline. After reconnecting, FCM delivers if the TTL allows; the inbox refreshes on resume either way. |
-| 7 | FCM token refresh | Diagnostics → Refresh registration, or clear app data and sign in again. | A new POST appears in the backend log, with the same installation id. Registered devices shows `lastSeenAt` updated. |
+| 6 | Device offline | Airplane mode, then compose (backend reports *Provider accepted*). Turn the network back on. | Nothing arrives while offline. After reconnecting, FCM may deliver; TTL is only one constraint. The newest inbox page refreshes on resume either way. |
+| 7a | Forced re-registration | Diagnostics → Refresh registration. | A new POST, same installation ID, updated `lastSeenAt`; the token may be unchanged. This does not prove rotation. |
+| 7b | Actual token rotation | With a debugger attached, observe a real SDK `OnNewToken` callback and follow address sync; do not clear app data. | A changed address is registered under the same installation ID. If no rotation is observed, leave this check pending. Do not log or copy the full token. |
+| 7c | New installation | Record the installation ID, clear app data, then sign in again. | A new installation ID is generated. This tests installation replacement, not same-installation token rotation. |
 | 8 | Backend down | Stop the backend, pull to refresh, sign in. | An error banner, not a crash. Registration shows "Waiting to retry". After restarting the backend, resume the app: it registers and refreshes. |
 | 9 | Firebase not configured | Remove `google-services.json`, rebuild, sign in. | Home: "Inbox-only (no real push)". Registered devices lists `simulated`. Compose, then pull to refresh shows the notification. |
-| 10 | Logout and shared device | Sign out as alice (online), sign in as bob, then compose to alice. | Alice's registration shows *Disabled: unregistered* or moves to bob. Bob's device shows nothing for Alice. |
-| 11 | Offline logout | Airplane mode, sign out, network on, reopen the app. | Diagnostics shows the pending cleanup, then "none". Alice's registration is unregistered. |
+| 10 | Logout and shared device | Sign out as alice (online), sign in as bob, then compose to alice. | Alice's registration shows *Disabled: unregistered* or moves to bob. A new send should not target Bob through Alice's registration. An old in-flight background payload may still be displayed; fetching Alice's detail as Bob returns `404`. |
+| 11 | Offline logout | Airplane mode, sign out, network on, reopen the app. | With an unexpired saved JWT, DELETE disables Alice's registration and token reset completes. If that JWT has expired, DELETE is dropped; verify successful token reset instead of expecting the backend row to be disabled. |
+
+See also the [worked learning exercise](../../docs/firebase-messaging-flow.md#trace-one-notification-end-to-end) and [POC limits](../../docs/firebase-messaging-flow.md#poc-limits-and-operational-boundaries). A permission grant or high-priority send does not guarantee heads-up presentation; Android channel/user settings still apply.
 
 ## Troubleshooting
 

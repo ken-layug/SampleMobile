@@ -10,6 +10,8 @@ The one web process hosts three things:
 
 See [docs/architecture.md](docs/architecture.md) for the design, provider boundaries and delivery semantics, and [docs/mobile-api-contract.md](docs/mobile-api-contract.md) for the client contract.
 
+New to Firebase but comfortable with .NET? Start with the [Firebase messaging flow guide](docs/firebase-messaging-flow.md), which explains the Firebase concepts and traces registration, sending, Android handling, and logout with sequence and class diagrams. The [learning documentation review](docs/learning-documentation-review.md) records the original findings and their resolution.
+
 ## Prerequisites
 
 - .NET SDK 10.0.4xx (`dotnet --list-sdks`)
@@ -110,6 +112,8 @@ docker compose down -v
 
 Schemas: `notification` (notifications, recipients, device registrations, delivery jobs and attempts, outbox), `identity` (ASP.NET Core Identity), `demo` (the sample business table). All identifiers are snake_case and primary keys are UUIDv7.
 
+For a progressive exercise with expected evidence at each stage, follow [Trace one notification end to end](docs/firebase-messaging-flow.md#trace-one-notification-end-to-end).
+
 ## Dashboard tour
 
 | Page | What it shows |
@@ -122,6 +126,8 @@ Schemas: `notification` (notifications, recipients, device registrations, delive
 | **Inbox inspector** | Any user's persisted inbox and read state, exactly as the mobile API returns it. |
 
 ## Sample workflows
+
+**Dashboard execution scope.** Interactive components call [DashboardSender](src/SampleMobile.Web/Components/DashboardSender.cs), which creates a DI scope per operation. A Blazor circuit outlives an HTTP request; this avoids sharing one scoped DbContext across overlapping clicks and refreshes.
 
 **Manual notification.** Compose → choose *Alice* → keep the virtual device checked → save. The notification and one delivery job are stored together. The worker wakes through `NOTIFY`, sends through the simulator, and the job shows *Provider accepted* and *Simulated*. Alice's inbox (Inbox inspector or `GET /api/mobile/notifications`) contains it as unread.
 
@@ -137,7 +143,10 @@ Schemas: `notification` (notifications, recipients, device registrations, delive
 2. Go to *Project settings → Service accounts → Generate new private key*. Save the JSON **outside this repository**, for example `C:\secrets\sample-mobile-firebase-adminsdk.json`. The repo's `.gitignore` also blocks `*firebase-adminsdk*.json` and `*service-account*.json` as a safety net.
 3. Point the backend at the key with user-secrets (`Firebase:CredentialsPath`, shown above) or `Firebase__CredentialsPath`, or put the JSON in `Firebase:CredentialsJson`.
 4. Optionally set `Firebase:ValidateOnly=true` to check the key and a device token without delivering anything. Optionally set `Firebase:AndroidChannelId` to the channel the app creates.
-5. Restart the backend. **Overview → Registered push providers** shows `fcm` as *Configured*.
+5. Restart the backend. **Overview → Registered push providers** shows `fcm` as *Configured*. This means configuration is present, not that credentials have been validated; the SDK initializes on the first send.
+6. Follow the [Android client setup](src/SampleMobile.Mobile/README.md#firebase-setup) using the same Firebase project, then the [worked learning exercise](docs/firebase-messaging-flow.md#trace-one-notification-end-to-end). Disable `ValidateOnly` for an actual device delivery test.
+
+The setup chain is Firebase project → Android package/client configuration → device token → authenticated API registration → backend credentials → FCM send. The mobile JWT belongs to this backend, not Firebase Authentication. The flow guide explains [what each success checkpoint proves](docs/firebase-messaging-flow.md#setup-checkpoints).
 
 The service account needs permission to send FCM messages (the default *Firebase Admin SDK* service account has it). Credentials are never logged; device tokens appear masked.
 
@@ -154,10 +163,10 @@ The service account needs permission to send FCM messages (the default *Firebase
 dotnet test
 ```
 
-This runs 176 tests in two projects:
+This runs the tests in two projects (use the test runner output for current counts):
 
-- `tests/SampleMobile.Tests` (83): domain, application (with NSubstitute), adapters, architecture rules, and **PostgreSQL integration tests**.
-- `tests/SampleMobile.Mobile.Tests` (93): the MAUI app's provider-neutral core. These cover contract JSON, auth/401 handling, registration sync and logout cleanup, push handling, the inbox and the mobile dependency rule. They need no device, Firebase or Docker.
+- `tests/SampleMobile.Tests`: domain, application (with NSubstitute), adapters, architecture rules, and **PostgreSQL integration tests**.
+- `tests/SampleMobile.Mobile.Tests`: the MAUI app's provider-neutral core. These cover contract JSON, auth/401 handling, registration sync and logout cleanup, push handling, the inbox and the mobile dependency rule. They need no device, Firebase or Docker.
 
 The backend integration tests start a throwaway `postgres:17-alpine` container through Testcontainers, so Docker must be running. To run without Docker:
 
@@ -201,6 +210,10 @@ Also confirm:
 4. Compose to Alice, targeting the Android registration. Delivery history shows *Provider accepted* with an FCM message id, and the device shows the notification. Tapping it should open the item fetched from the inbox API.
 5. Uninstall the app (or clear its data) and send again. FCM eventually reports `UNREGISTERED` and the registration is disabled (*invalidated by provider*). FCM may take a while to report it.
 6. With the device in airplane mode, sends are still *Provider accepted*. Acceptance is not delivery.
+
+## POC limits
+
+See [POC limits and operational boundaries](docs/firebase-messaging-flow.md#poc-limits-and-operational-boundaries): the mobile inbox loads the newest 50 items, push is not guaranteed, background tray text precedes API authorization, and production operations require further design.
 
 ## Project layout
 

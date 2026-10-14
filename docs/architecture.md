@@ -2,6 +2,8 @@
 
 SampleMobile is a proof of concept for one idea: **notifications belong to the application; push providers are replaceable delivery adapters.** Firebase Cloud Messaging is one adapter among several, confined to the Infrastructure project.
 
+For a Firebase-specific walkthrough of the backend and Android client, see [Firebase messaging flow](firebase-messaging-flow.md), including sequence diagrams and class maps.
+
 ## Layers and the dependency rule
 
 ```text
@@ -86,10 +88,12 @@ public interface IPushNotificationProvider {
 
 ### At-least-once, not exactly-once
 
-Exactly-once delivery to an external system is not achievable here. If the process dies after FCM accepted a message but before the outcome was committed, the lease expires and the job is sent again. The history shows the lost attempt as `Abandoned (outcome unknown)`. These mitigations keep the duplicate harmless:
+Exactly-once delivery to an external system is not achievable here. If the process dies after FCM accepted a message but before the outcome was committed, the lease expires and the job is sent again. The history shows the lost attempt as `Abandoned (outcome unknown)`. These mechanisms reduce duplicate effects; they do not guarantee exactly-once display:
 
-- FCM `collapse_key` and the Android notification `tag` both equal the notification id, so a second copy replaces the first in the tray.
-- Push data carries only the notification id, and the client renders from the inbox API and de-duplicates by id.
+- Android notification `tag` equals the notification id; the local presenter uses the same tag and numeric id as FCM for tray replacement.
+- The factory also sets `collapse_key`, but notification messages ignore that parameter. Provider-side collapsing happens before delivery and is separate from tray replacement; see [Firebase collapse semantics](https://firebase.google.com/docs/cloud-messaging/customize-messages/collapsible-message-types).
+- The data block carries `notificationId`, `type`, and optional `resourceId`. App-controlled rendering fetches API content. The push processor tracks in-flight IDs and the most recent 200 handled IDs in memory; this cache is bounded and reset on session changes.
+- Inbox entries are keyed by notification ID. Android background tray text comes directly from the notification block, before any app-side fetch.
 - Read state lives on the server, so a duplicate push can't "unread" anything.
 
 ## When Firebase is unavailable
@@ -116,11 +120,13 @@ None of the following change: Domain entities, `NotificationPublisher`, `Notific
 The .NET MAUI Android app ([src/SampleMobile.Mobile/README.md](../src/SampleMobile.Mobile/README.md)) mirrors the backend's provider boundary on the device.
 
 - **Two projects.** `SampleMobile.Mobile.Core` (net10.0) contains the API client, session, inbox, registration lifecycle and view models, and references no MAUI, Android or Firebase package. `SampleMobile.Mobile` (net10.0-android) adds the pages and the Android integration. Firebase SDK calls live only in `Platforms/Android/Push/Firebase/`, behind `IPushTransport`.
-- **Content comes from the API.** A push is a hint: the app fetches `GET /api/mobile/notifications/{notificationId}` and renders that, never the payload text. A `404` (another user's notification) is ignored. The inbox is keyed by notification id, so at-least-once delivery doesn't duplicate entries.
+- **App-controlled content comes from the API.** The app fetches `GET /api/mobile/notifications/{notificationId}` for foreground rendering and detail pages. A `404` is ignored. In the background, Android automatically displays title/body from the FCM notification block before these checks run. A later `404` or session-generation check cannot retract text already displayed by the OS. The inbox is keyed by notification ID.
 - **One tray entry per notification.** The app's own notifications use tag = notificationId, like the backend's FCM messages, so a notification shown by the app and one shown by Android replace each other.
 - **Registration lifecycle.** The `installationId` is a GUID generated once. The FCM token is persisted before it is sent and re-sent on rotation, after a transient failure (bounded backoff, reconnect, resume, next launch) and on every login. A new login therefore moves a shared installation to its new owner.
-- **Logout.** Logout records a cleanup (DELETE with the user's token, then delete the FCM token) before discarding the token, and retries whatever couldn't run offline.
+- **Logout.** Persist cleanup with the old JWT in secure storage, clear the active session, then attempt DELETE and provider-token reset. Reset can still be attempted after a transient DELETE failure. Expired-JWT DELETE work is dropped; unfinished reset work remains pending. See the [authoritative logout sequence](firebase-messaging-flow.md#4-logout-and-offline-cleanup). Offline logout is not instantaneous revocation of queued pushes.
 - **Without FCM.** If FCM isn't configured or Play services are missing, the app registers as `simulated` and works inbox-only.
+
+See [POC limits and operational boundaries](firebase-messaging-flow.md#poc-limits-and-operational-boundaries) for inbox pagination, duplicate handling, and production concerns.
 
 ## Security notes
 

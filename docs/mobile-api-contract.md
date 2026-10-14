@@ -6,8 +6,8 @@ The machine-readable version is [`openapi/mobile-v1.json`](openapi/mobile-v1.jso
 
 ## Principles the client must follow
 
-1. **The inbox API is the source of truth.** A push message carries only `notificationId`, `type` and an optional `resourceId`. On receipt, fetch `GET /api/mobile/notifications/{notificationId}` (or refresh the list) and render what the API returns. Never build UI from push payload text alone.
-2. **Pushes can be duplicated, delayed or lost.** Delivery is at-least-once, and a provider "accepting" a message does not guarantee the device shows it. De-duplicate by `notificationId`, and refresh the inbox on app start and on resume.
+1. **The inbox API is the source of truth.** The push **data block** carries `notificationId`, `type` and optional `resourceId`. For app-controlled rendering, fetch `GET /api/mobile/notifications/{notificationId}` (or refresh the list) and use the API response. The separate **notification block** contains title/body that Android displays automatically in the background, before API authorization or session checks run.
+2. **Pushes can be duplicated, delayed or lost.** Backend send attempts are at-least-once; device delivery is not guaranteed, and a provider "accepting" a message does not guarantee the device shows it. De-duplicate by `notificationId`, and refresh the inbox on app start and on resume.
 3. **Read state lives on the server.** Call `POST .../{id}/read` when the user opens a notification. Read state is per user and independent of any push.
 4. **Ignore unknown `type` values** rather than failing. New types may be added at any time.
 
@@ -17,7 +17,9 @@ The machine-readable version is [`openapi/mobile-v1.json`](openapi/mobile-v1.jso
 |---|---|
 | Android emulator | `http://10.0.2.2:5010` |
 | Physical device on the same LAN | `http://<dev-machine-LAN-IP>:5010`. Start the backend with `--urls http://0.0.0.0:5010` and allow the port through the firewall. |
-| Windows/macOS MAUI head | `http://localhost:5010` |
+| USB-connected Android phone | `http://localhost:5010` after `adb reverse tcp:5010 tcp:5010`. |
+
+The shipped client targets Android only. See the [mobile networking guide](../src/SampleMobile.Mobile/README.md#backend-url-and-networking) for device configuration.
 
 Development serves plain HTTP so that emulators work. Android needs cleartext traffic enabled for these hosts in debug builds (a `network_security_config` that allows `10.0.2.2` and your LAN IP). Every other environment must use HTTPS.
 
@@ -75,7 +77,7 @@ A registration ties one **installation** of the app, signed in as one user, to o
 
 - `installationId`: generate a UUID once per installation (e.g. with `Guid.NewGuid()`) and persist it in `Preferences`. It is not the push token and must not change when the token rotates.
 - `provider`: the push provider the address belongs to. Supported ids are listed in the `400` error when an unsupported one is sent:
-  - `fcm`: `address` is the **FCM registration token** from `FirebaseMessaging.getToken()` / `IFirebaseCloudMessaging.GetTokenAsync()`.
+  - `fcm`: `address` is the **FCM registration token** obtained through `FirebaseMessaging.Instance.GetToken()` in [FirebaseAndroidPushTransport](../src/SampleMobile.Mobile/Platforms/Android/Push/Firebase/FirebaseAndroidPushTransport.cs).
   - `simulated`: for testing without Firebase. `address` can be any string. Nothing reaches the device, but notifications still appear in the inbox.
 - `platform`: `android`, `ios` or `virtual`.
 
@@ -137,7 +139,7 @@ Lists the caller's registrations, including disabled ones, newest first. `200 OK
 
 ### `DELETE /api/mobile/device-registrations/{installationId}?provider=fcm`
 
-Stops push to this installation for the provider. Call it on logout, *before* discarding the access token. It is idempotent. The row is kept (disabled) so delivery history stays intact.
+Disables this installation's registration for future dispatch; it does not recall messages already accepted by FCM. On logout, the client securely persists cleanup with the old JWT before clearing the active session, then attempts this DELETE and provider-token reset. Pending cleanup can retry offline failures without keeping the user signed in. See the [logout sequence](firebase-messaging-flow.md#4-logout-and-offline-cleanup). DELETE is idempotent; the disabled row preserves delivery history.
 
 | Status | Meaning |
 |---|---|
@@ -221,7 +223,7 @@ The backend sends an FCM message with both a `notification` block (title and bod
 Android specifics:
 
 - High priority.
-- `collapse_key` and the notification `tag` are both the `notificationId`, so a duplicate send replaces the earlier tray entry instead of adding a second one.
+- Android notification `tag` is `notificationId`, allowing replacement of the matching tray entry. The factory also sets `collapse_key`, but notification messages ignore it; it is not a duplicate-delivery guarantee. See [collapse versus deduplication](firebase-messaging-flow.md#failure-semantics-and-a-practical-debugging-route).
 - If `Firebase:AndroidChannelId` is configured, the notification uses that channel. The app must create the channel.
 
 Client handling:
@@ -245,7 +247,9 @@ Login succeeded ─► store token ─► POST /device-registrations ─► GET 
 FCM token refreshed ─► POST /device-registrations (same installationId, new address)
 Push received ─► GET /notifications/{notificationId} ─► render
 User opens a notification ─► POST /notifications/{id}/read
-Logout ─► DELETE /device-registrations/{installationId}?provider=fcm ─► clear token
+Logout ─► persist cleanup with old JWT ─► clear active session
+       ─► attempt DELETE with saved JWT and reset provider token
+       └─ retain unfinished cleanup for reconnect/resume/next launch
 ```
 
 ## Errors
@@ -286,6 +290,8 @@ Other errors:
 
 ## curl walkthrough
 
+Requires **Bash**, `curl`, and `jq`. Run against the local development backend. For Windows PowerShell, use the equivalent walkthrough below.
+
 ```bash
 BASE=http://localhost:5010
 TOKEN=$(curl -s -X POST $BASE/api/mobile/auth/login -H "Content-Type: application/json" \
@@ -303,8 +309,47 @@ curl -s -X DELETE "$BASE/api/mobile/device-registrations/0b6f0c7e-2b8f-4f4e-9a37
 
 To produce a notification for the device, sign in to the dashboard (`/`) as the demo administrator and use **Compose** or **Raise DemoAlert**.
 
+## PowerShell walkthrough
+
+Run from the repository root with the development backend running. This uses `Invoke-RestMethod` and the development seed password already in the local config; it does not print the JWT or password. The registration is simulated, so no device token is required.
+
+```powershell
+$apiBase = 'http://localhost:5010'
+$demoConfig = Get-Content ./src/SampleMobile.Web/appsettings.Development.json -Raw | ConvertFrom-Json
+$demoUser = $demoConfig.DemoSeed.MobileUsers | Where-Object UserName -eq 'alice' | Select-Object -First 1
+$loginBody = @{ userName = $demoUser.UserName; password = $demoUser.Password } | ConvertTo-Json
+$loginResult = Invoke-RestMethod -Method Post -Uri "$apiBase/api/mobile/auth/login" -ContentType 'application/json' -Body $loginBody
+$authHeaders = @{ Authorization = "Bearer $($loginResult.accessToken)" }
+$installationId = [guid]::NewGuid().ToString()
+$registrationBody = @{
+    installationId = $installationId
+    platform = 'virtual'
+    provider = 'simulated'
+    address = 'sim-powershell-device'
+} | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri "$apiBase/api/mobile/device-registrations" -Headers $authHeaders -ContentType 'application/json' -Body $registrationBody
+```
+
+Compose a uniquely titled notification for Alice in the dashboard, selecting this registration. Then inspect it and verify idempotent read state:
+
+```powershell
+$inbox = Invoke-RestMethod -Uri "$apiBase/api/mobile/notifications?page=1&pageSize=20" -Headers $authHeaders
+$inbox.items | Select-Object id, title, readAt
+$notificationId = Read-Host 'Paste the notification id from the list'
+$notificationUrl = "$apiBase/api/mobile/notifications/$notificationId"
+Invoke-RestMethod -Uri $notificationUrl -Headers $authHeaders
+$firstRead = Invoke-RestMethod -Method Post -Uri "$notificationUrl/read" -Headers $authHeaders
+$secondRead = Invoke-RestMethod -Method Post -Uri "$notificationUrl/read" -Headers $authHeaders
+$firstRead.readAt -eq $secondRead.readAt  # Expected: True
+Invoke-RestMethod -Method Delete -Uri "$apiBase/api/mobile/device-registrations/${installationId}?provider=simulated" -Headers $authHeaders
+Remove-Variable authHeaders, loginResult, loginBody, demoUser, demoConfig
+```
+
+For the real-FCM learning exercise, reuse only the login and inbox inspection portions; the Android app registers its own FCM address. Do not mark the item read from PowerShell until you have observed the foreground/tap behavior you want to test.
+
 ## Out of scope for v1
 
 - Refresh tokens. Sign in again on `401`.
 - Delivery receipts from the device. The server only knows that a provider *accepted* a message; read state is the only device-side confirmation.
-- Firebase Installation ID (FID) targeting. FirebaseAdmin 3.7 deprecates sending to registration tokens in favour of FIDs. If the client moves to FIDs, that will be a new provider id (for example `fcm-fid`) with its own address semantics; `fcm` will keep meaning "FCM registration token".
+- Firebase Installation ID (FID) targeting. This repository defines `fcm` as an FCM registration-token address. See the pinned packages in [Directory.Packages.props](../Directory.Packages.props) and the compatibility comments in [FcmMessageFactory](../src/SampleMobile.Infrastructure/Push/Firebase/FcmMessageFactory.cs). A future address-type change requires an explicit provider/contract decision rather than silently reinterpreting existing addresses.
+- The API supports paging, but the current Android inbox refresh loads only the first 50 items. See [POC limits](firebase-messaging-flow.md#poc-limits-and-operational-boundaries).
